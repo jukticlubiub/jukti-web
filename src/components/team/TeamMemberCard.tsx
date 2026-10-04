@@ -12,14 +12,14 @@ const palettes = {
   executive: {
     background: "bg-[radial-gradient(120%_85%_at_50%_35%,#a84013_45%,#772d0d_100%)]",
     glow: "bg-[radial-gradient(55%_50%_at_50%_45%,rgb(200_74_26/0.45),transparent_70%)]",
-    fade: "bg-[linear-gradient(to_bottom,rgb(200_74_26/0.96)_0%,rgb(200_74_26/0.75)_20%,rgb(200_74_26/0)_46%)]",
+    fade: "bg-[linear-gradient(to_top,rgb(200_74_26/0.96)_0%,rgb(200_74_26/0.75)_20%,rgb(200_74_26/0)_46%)]",
     role: "font-light text-[#1a0803]",
     silhouette: "text-[#2b0e04]/60",
   },
   advisor: {
     background: "bg-[radial-gradient(120%_85%_at_50%_35%,#f6f3ef_45%,#cdc5bd_100%)]",
     glow: "bg-[radial-gradient(55%_50%_at_50%_45%,rgb(255_255_255/0.7),transparent_70%)]",
-    fade: "bg-[linear-gradient(to_bottom,rgb(255_255_255/0.97)_0%,rgb(255_255_255/0.8)_20%,rgb(255_255_255/0)_46%)]",
+    fade: "bg-[linear-gradient(to_top,rgb(255_255_255/0.97)_0%,rgb(255_255_255/0.8)_20%,rgb(255_255_255/0)_46%)]",
     role: "font-normal text-lava",
     silhouette: "text-black/15",
   },
@@ -37,7 +37,8 @@ type TeamMemberCardProps = {
 
 /**
  * Portrait card from the Team Jukti design: a black-and-white photo over the card color.
- * Hovering (or focusing) brings back the photo's color and fades in the name and role.
+ * Hovering (or focusing) brings back the photo's color and fades in the name and role,
+ * at the bottom of the card so the face stays clear.
  * The photo fills the card (uploads are cropped to its 416:657 shape in the admin panel).
  */
 export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProps) {
@@ -69,7 +70,7 @@ export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProp
         )}
       />
 
-      <div className="relative px-[6cqw] pt-[13cqw] text-center">
+      <div className="absolute inset-x-0 bottom-0 px-[6cqw] pb-[11cqw] text-center">
         <p
           className={cn(
             "font-heading text-[7.2cqw] leading-tight tracking-[-0.01em] text-black [-webkit-text-stroke:0.02em_currentColor]",
@@ -86,7 +87,7 @@ export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProp
       {person.linkedin && (
         <span
           aria-hidden
-          className="absolute right-[5cqw] bottom-[5cqw] grid size-[11cqw] place-items-center rounded-full border border-white/25 bg-black/35 text-[5cqw] font-semibold text-white opacity-0 backdrop-blur-md transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100"
+          className="absolute top-[5cqw] right-[5cqw] grid size-[11cqw] place-items-center rounded-full border border-white/25 bg-black/35 text-[5cqw] font-semibold text-white opacity-0 backdrop-blur-md transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100"
         >
           in
         </span>
