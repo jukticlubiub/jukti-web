@@ -1,0 +1,223 @@
+"use server";
+
+import { updateTag } from "next/cache";
+import { z } from "zod";
+import { DEVELOPERS_TAG, SETTINGS_TAG, STORY_TAG, TEAM_TAG } from "@/lib/content/queries";
+import { type ActionState, explainDbError, failed, fieldErrors, ok, optional, slugify, str } from "../form";
+import { guard } from "../guard";
+import type { AdminArea } from "../roles";
+
+/** Tables edited as ordered lists, with the area that owns them, the "shown" column and the cache tag. */
+const lists = {
+  team_members: { area: "team", visible: "active", tag: TEAM_TAG },
+  alumni: { area: "alumni", visible: "active", tag: TEAM_TAG },
+  story_chapters: { area: "story", visible: "published", tag: STORY_TAG },
+  developers: { area: "developers", visible: "active", tag: DEVELOPERS_TAG },
+} as const satisfies Record<string, { area: AdminArea; visible: string; tag: string }>;
+
+type ListTable = keyof typeof lists;
+const isListTable = (t: string): t is ListTable => t in lists;
+
+const url = z.union([z.literal(null), z.url("Enter a full link, starting with https://")]);
+
+/** Show or hide a row on the site. */
+export async function setShown(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const table = str(fd, "table");
+  if (!isListTable(table)) return failed("Unknown list.");
+  const cfg = lists[table];
+  const g = await guard(cfg.area);
+  if (!g.ok) return g.state;
+  const shown = str(fd, "shown") === "true";
+  const { error } = await g.db.from(table).update({ [cfg.visible]: shown }).eq("id", str(fd, "id"));
+  if (error) return failed(explainDbError(error.message));
+  updateTag(cfg.tag);
+  return ok(previous, shown ? "Shown on the site." : "Hidden from the site.");
+}
+
+/** Move a row up or down in its list (within `kind` for the team). */
+export async function moveRow(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const table = str(fd, "table");
+  if (!isListTable(table)) return failed("Unknown list.");
+  const cfg = lists[table];
+  const g = await guard(cfg.area);
+  if (!g.ok) return g.state;
+  let q = g.db.from(table).select("id, position").order("position");
+  if (table === "team_members") q = q.eq("kind", str(fd, "kind"));
+  const { data } = await q;
+  const list = (data as { id: string; position: number }[] | null) ?? [];
+  const i = list.findIndex((r) => r.id === str(fd, "id"));
+  const j = str(fd, "direction") === "up" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= list.length) return ok(previous, "");
+  [list[i], list[j]] = [list[j], list[i]];
+  for (const [position, r] of list.entries()) if (r.position !== position) await g.db.from(table).update({ position }).eq("id", r.id);
+  updateTag(cfg.tag);
+  return ok(previous, "Moved.");
+}
+
+async function nextPosition(db: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSessionClient>>, table: ListTable, kind?: string) {
+  let q = db.from(table).select("position").order("position", { ascending: false }).limit(1);
+  if (kind) q = q.eq("kind", kind);
+  const { data } = await q;
+  return (((data as { position: number }[] | null)?.[0]?.position ?? -1) as number) + 1;
+}
+
+/* ---------- Team & alumni (Team Manager) ---------- */
+
+const memberSchema = z.object({
+  kind: z.enum(["advisor", "executive"]),
+  name: z.string().min(1, "Enter a name.").max(80),
+  role: z.string().max(80),
+  photoUrl: z.string().nullable(),
+  linkedin: url,
+});
+
+export async function saveTeamMember(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("team");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const parsed = memberSchema.safeParse({ kind: str(fd, "kind"), name: str(fd, "name"), role: str(fd, "role"), photoUrl: optional(fd, "photoUrl"), linkedin: optional(fd, "linkedin") });
+  if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
+  const m = parsed.data;
+  const row = { kind: m.kind, name: m.name, role: m.role, photo_url: m.photoUrl, linkedin: m.linkedin };
+  const { error } = id
+    ? await g.db.from("team_members").update(row).eq("id", id)
+    : await g.db.from("team_members").insert({ ...row, position: await nextPosition(g.db, "team_members", m.kind) });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(TEAM_TAG);
+  return ok(previous, id ? "Saved." : `Added ${m.name}.`);
+}
+
+const alumnusSchema = z.object({ name: z.string().min(1, "Enter a name.").max(80), role: z.string().max(80), term: z.string().max(20), photoUrl: z.string().nullable(), linkedin: url });
+
+export async function saveAlumnus(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("alumni");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const parsed = alumnusSchema.safeParse({ name: str(fd, "name"), role: str(fd, "role"), term: str(fd, "term"), photoUrl: optional(fd, "photoUrl"), linkedin: optional(fd, "linkedin") });
+  if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
+  const a = parsed.data;
+  const row = { name: a.name, role: a.role, term: a.term, photo_url: a.photoUrl, linkedin: a.linkedin };
+  const { error } = id ? await g.db.from("alumni").update(row).eq("id", id) : await g.db.from("alumni").insert({ ...row, position: await nextPosition(g.db, "alumni") });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(TEAM_TAG);
+  return ok(previous, id ? "Saved." : `Added ${a.name}.`);
+}
+
+export async function saveBoardTerm(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("team");
+  if (!g.ok) return g.state;
+  const term = str(fd, "term");
+  if (!/^\d{4}(-\d{2,4})?$/.test(term)) return failed("Write the term like 2026-27.", { term: "e.g. 2026-27" });
+  const { error } = await g.db.from("site_settings").upsert({ key: "team.board_term", value: term });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(SETTINGS_TAG);
+  updateTag(TEAM_TAG);
+  return ok(previous, "Board term saved.");
+}
+
+/* ---------- About story (PR Editor) ---------- */
+
+const chapterSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Lowercase letters, numbers and hyphens only."),
+  kicker: z.string().max(40),
+  title: z.string().min(1, "Give the chapter a title.").max(140),
+  body: z.string().max(1500, "Keep it to a short paragraph."),
+  badge: z.string().max(40),
+  photoHint: z.string().max(120),
+  photoUrl: z.string().nullable(),
+  photoAlt: z.string().max(200),
+  linkHref: z.string().nullable(),
+  linkLabel: z.string().max(60).nullable(),
+});
+
+export async function saveChapter(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("story");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const parsed = chapterSchema.safeParse({
+    slug: str(fd, "slug") || slugify(str(fd, "title")),
+    kicker: str(fd, "kicker"),
+    title: str(fd, "title"),
+    body: str(fd, "body"),
+    badge: str(fd, "badge"),
+    photoHint: str(fd, "photoHint"),
+    photoUrl: optional(fd, "photoUrl"),
+    photoAlt: str(fd, "photoAlt"),
+    linkHref: optional(fd, "linkHref"),
+    linkLabel: optional(fd, "linkLabel"),
+  });
+  if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
+  const c = parsed.data;
+  if (c.photoUrl && !c.photoAlt) return failed("Describe the photo.", { photoAlt: "Describe the photo." });
+  const row = {
+    slug: c.slug, kicker: c.kicker, title: c.title, body: c.body, badge: c.badge, photo_hint: c.photoHint, photo_url: c.photoUrl, photo_alt: c.photoAlt, link_href: c.linkHref, link_label: c.linkLabel,
+  };
+  const { error } = id ? await g.db.from("story_chapters").update(row).eq("id", id) : await g.db.from("story_chapters").insert({ ...row, position: await nextPosition(g.db, "story_chapters") });
+  if (error) return failed(error.message.includes("duplicate key") ? "Another chapter uses that id." : explainDbError(error.message));
+  updateTag(STORY_TAG);
+  return ok(previous, id ? "Chapter saved." : "Chapter added.");
+}
+
+/* ---------- Developers (Master Admin) ---------- */
+
+const socialKeys = ["linkedin", "github", "facebook", "instagram", "website", "email"] as const;
+
+export async function saveDeveloper(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("developers");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const name = str(fd, "name");
+  if (!name) return failed("Enter a name.", { name: "Enter a name." });
+  const socials = Object.fromEntries(socialKeys.map((k) => [k, str(fd, `social_${k}`)]).filter(([, v]) => v));
+  for (const [k, v] of Object.entries(socials)) {
+    const valid = k === "email" ? z.email().safeParse(v).success : z.url().safeParse(v).success;
+    if (!valid) return failed(`Check the ${k} link.`, { [`social_${k}`]: k === "email" ? "Enter an email address." : "Enter a full link, starting with https://" });
+  }
+  const row = { name, role: str(fd, "role"), designation: str(fd, "designation"), photo_url: optional(fd, "photoUrl"), socials };
+  const { error } = id ? await g.db.from("developers").update(row).eq("id", id) : await g.db.from("developers").insert({ ...row, position: await nextPosition(g.db, "developers") });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(DEVELOPERS_TAG);
+  return ok(previous, id ? "Saved." : `Added ${name}.`);
+}
+
+/* ---------- Site settings and the memorial page (Master Admin) ---------- */
+
+export async function saveSocials(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("settings");
+  if (!g.ok) return g.state;
+  const value = { facebook: str(fd, "facebook"), instagram: str(fd, "instagram"), linkedin: str(fd, "linkedin"), email: str(fd, "email") };
+  const errors: Record<string, string> = {};
+  for (const k of ["facebook", "instagram", "linkedin"] as const) if (value[k] && !z.url().safeParse(value[k]).success) errors[k] = "Enter a full link, starting with https://";
+  if (value.email && !z.email().safeParse(value.email).success) errors.email = "Enter an email address.";
+  if (Object.keys(errors).length) return failed("Check the highlighted fields.", errors);
+  const { error } = await g.db.from("site_settings").upsert({ key: "socials", value });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(SETTINGS_TAG);
+  return ok(previous, "Social links saved.");
+}
+
+export async function saveMemorial(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("memorial");
+  if (!g.ok) return g.state;
+  const lines = (key: string) => String(fd.get(key) ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const tribute = String(fd.get("tribute") ?? "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (tribute.length === 0) return failed("The tribute can’t be empty.", { tribute: "Write the tribute." });
+  const life = lines("life").map((l) => {
+    const [year = "", title = "", ...detail] = l.split("|").map((s) => s.trim());
+    return { year, title, detail: detail.join(" | ") };
+  });
+  if (life.some((e) => !e.year || !e.title)) return failed("Each timeline line needs a year and a title.", { life: "year | title | detail" });
+  let photos: { src: string; alt: string; width: number; height: number }[];
+  try {
+    photos = z.array(z.object({ src: z.string().min(1), alt: z.string(), width: z.number(), height: z.number() })).parse(JSON.parse(String(fd.get("photos") ?? "[]")));
+  } catch {
+    return failed("The photo list couldn’t be read.");
+  }
+  if (photos.some((p) => !p.alt.trim())) return failed("Describe every photo.", { photos: "Each photo needs a description." });
+  const value = { tribute, farewell: str(fd, "farewell"), notice: str(fd, "notice"), life, interests: lines("interests"), photos };
+  const { error } = await g.db.from("site_settings").upsert({ key: "memorial", value });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(SETTINGS_TAG);
+  return ok(previous, "Memorial page saved.");
+}
+
