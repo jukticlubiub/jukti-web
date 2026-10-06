@@ -2,6 +2,7 @@
 
 import { refresh, updateTag } from "next/cache";
 import { after } from "next/server";
+import { SETTINGS_TAG } from "@/lib/content/queries";
 import { verifyCardToken } from "@/lib/members/card";
 import { emailMemberApproved, emailMemberNeedsAttention } from "@/lib/members/emails";
 import { MEMBERS_TAG } from "@/lib/members/public";
@@ -202,6 +203,20 @@ export async function setExecutiveActive(previous: ActionState, fd: FormData): P
   if (error) return failed(explainDbError(error.message));
   refresh();
   return ok(previous, active ? "Switched on." : "Switched off: new registrations can’t use it.");
+}
+
+/* ---------- Opening and closing registration ---------- */
+
+/** Open or close registration on /join. While closed, /join says we're not recruiting this semester. */
+export async function setRegistrationOpen(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("members");
+  if (!g.ok) return g.state;
+  const open = str(fd, "open") === "true";
+  const { error } = await g.db.from("site_settings").upsert({ key: "members.registration", value: { open } });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(SETTINGS_TAG);
+  refresh();
+  return ok(previous, open ? "Registration is open." : "Registration is closed.");
 }
 
 /* ---------- Moderating what members show publicly ---------- */

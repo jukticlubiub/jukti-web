@@ -26,6 +26,7 @@ the one-time setup, and how the panel's roles work.
    - `…_rsvp_guests.sql`: guests from outside IUB can RSVP (student ID optional)
    - `…_past_events.sql`: PR Editors can add and document events that are already over
    - `…_former_advisors.sql`: former faculty advisors, kept with the alumni
+   - `…_registration_toggle.sql`: opening and closing member registration
 2. **Load the starting content**: paste `seed/faculty.sql`, then `seed/content.sql`, into
    the SQL editor. For members, see **Members** below (the import and executive codes). (`content.sql` copies the team, alumni, story chapters, developers,
    board term and social links from `src/lib/data/`. It only fills empty tables, so it's
@@ -67,7 +68,7 @@ security, so the panel's menus only decide what's shown.
 | **PR Editor** | Jukti Logs; recaps and photo galleries of past events; the About story; approving memories of Dr. Sabbir; the contact Inbox |
 | **Academic Coordinator** | Helpline moderation (hide or restore questions and answers), the faculty directory, helpline seniors; answers questions with a JUKTI badge |
 | **Team Manager** | The executive panel and faculty advisors, the board term, and alumni |
-| **Membership Manager** | Approving new members (checking their bKash or cash payment), sending a registration back with a note, marking members lapsed, the member list and CSV, executive codes, and moderating what members show publicly: fixing names, removing photos or bios, hiding someone from the public list or directory, and fixing or removing imported members |
+| **Membership Manager** | Opening and closing registration, approving new members (checking their bKash or cash payment), sending a registration back with a note, marking members lapsed, the member list and CSV, executive codes, and moderating what members show publicly: fixing names, removing photos or bios, hiding someone from the public list or directory, and fixing or removing imported members |
 
 There must always be at least one Master Admin; the last one can't be removed.
 
@@ -103,6 +104,11 @@ There must always be at least one Master Admin; the last one can't be removed.
 Each of them becomes a member here (approved, with their number) the first time they
 sign in with their IUB email. Until then they're listed under **Admin > Members > Not
 signed in yet**.
+
+**Opening and closing registration:** the switch at the top of **Admin > Members**. While
+it's closed, the Join page says we're not recruiting members this semester and points to
+the club's Facebook page; members can still sign in. The database refuses new
+registrations while it's closed.
 
 **Executive codes:** after paying, a member enters the code an executive gave them.
 Manage them in **Admin > Members > Executive codes**: the codes members

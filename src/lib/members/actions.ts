@@ -4,6 +4,7 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type ActionState, failed, fieldErrors, ok } from "@/lib/admin/form";
+import { getRegistrationOpen } from "@/lib/content/queries";
 import { createSessionClient } from "@/lib/supabase/server";
 import { getAccount, memberMode, readPreviewMember, writePreviewMember } from "./account";
 import { type MemberStatus, memberStatuses } from "./options";
@@ -118,6 +119,7 @@ const dbErrors: Record<string, [field: string, message: string]> = {
   invalid_payment: ["bkash_sender_number", "Check the payment details."],
   executive_required: ["executive_id", "Enter the code an executive gave you after you paid."],
   invalid_executive: ["executive_id", "That code isn't valid. Check it with the executive you paid."],
+  registration_closed: ["form", "Registration is closed right now. Keep an eye on our Facebook page for the next recruitment."],
   invalid_bio: ["bio", "Keep your bio under 500 characters."],
   invalid_link: ["linkedin", "Check your LinkedIn and GitHub links."],
   too_many_skills: ["skills", "Up to 15 short skills."],
@@ -144,6 +146,7 @@ export async function registerMember(_previous: ActionState, fd: FormData): Prom
   if (!account.user) return failed("Your sign-in has expired. Sign in again.");
   if (!account.user.iubId) return failed(dbErrors.not_iub_student[1]);
   if (account.member) redirect("/account");
+  if (!(await getRegistrationOpen())) return failed(dbErrors.registration_closed[1]);
 
   const fields: ProfileFields = {
     ...profile.data,

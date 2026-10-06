@@ -4,9 +4,12 @@ import { Suspense } from "react";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
 import { AccountHeader, Eyebrow } from "@/components/members/AccountHeader";
 import { JoinForm } from "@/components/members/JoinForm";
+import { JuroGreeter } from "@/components/juro/JuroGreeter";
 import { GoogleSignIn } from "@/components/ui/GoogleSignIn";
+import { ArrowIcon, CalendarIcon, FacebookIcon, IdCardIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
 import { Reveal } from "@/components/ui/Reveal";
 import { signOut } from "@/lib/auth/actions";
+import { getRegistrationOpen, getSocials } from "@/lib/content/queries";
 import { getAccount } from "@/lib/members/account";
 import { requestTime } from "@/lib/events/now";
 import { currentSemester, intakeLabel } from "@/lib/members/semester";
@@ -37,7 +40,7 @@ export default function JoinPage({ searchParams }: PageProps<"/join">) {
 }
 
 async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams">) {
-  const [{ mode, user, member }, params, now] = await Promise.all([getAccount(), searchParams, requestTime()]);
+  const [{ mode, user, member }, params, now, open] = await Promise.all([getAccount(), searchParams, requestTime(), getRegistrationOpen()]);
   // Already registered (including through the old registration app): straight to the account.
   if (member) redirect("/account");
 
@@ -50,6 +53,8 @@ async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams
       </Card>
     );
   }
+
+  if (!open) return <NotRecruiting user={user} signInFailed={params.signin === "failed"} />;
 
   if (!user) {
     return (
@@ -125,6 +130,100 @@ async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams
         </p>
       )}
     </Card>
+  );
+}
+
+/** What a member finds after signing in, listed on the closed page's sign-in side. */
+const memberPerks = [
+  { Icon: UserIcon, title: "Profile", text: "Update your details and photo" },
+  { Icon: IdCardIcon, title: "Member card", text: "Your digital card with its QR code" },
+  { Icon: CalendarIcon, title: "Activity", text: "Events you attended, and certificates" },
+  { Icon: UsersIcon, title: "Directory", text: "Find and connect with other members" },
+] as const;
+
+/**
+ * Registration closed in Admin > Members. One card, two sides: Juro and the news that we're
+ * not recruiting (with the Facebook page for the next round), and signing in for members.
+ */
+async function NotRecruiting({ user, signInFailed }: { user: { email: string } | null; signInFailed: boolean }) {
+  const { facebook } = await getSocials();
+  return (
+    <Reveal className="glass-card grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      {/* Not recruiting */}
+      <section aria-labelledby="closed-title" className="flex flex-col items-center px-6 pt-8 pb-10 text-center sm:px-10">
+        <div className="relative mt-6 w-fit">
+          {/* A warm glow for him to stand in. */}
+          <div aria-hidden className="absolute inset-x-[-30%] bottom-[2%] h-[45%] rounded-[100%] bg-[radial-gradient(closest-side,rgb(245_124_72/0.35),transparent)]" />
+          <JuroGreeter message="See you next recruitment!" clickMessage="Follow us on Facebook!" />
+        </div>
+        <Eyebrow className="mt-4">Recruitment closed</Eyebrow>
+        <h2 id="closed-title" className="mt-3 font-heading text-[clamp(1.3rem,1.9vw,1.6rem)] leading-tight">
+          We’re not recruiting members this semester
+        </h2>
+        <p className="mt-4 max-w-[24rem] leading-relaxed text-body/85">Keep an eye on our Facebook page for our next recruitment.</p>
+        <a href={facebook} target="_blank" rel="noopener noreferrer" className="btn-pill btn-primary mt-7">
+          <FacebookIcon />
+          <span>
+            <span className="max-sm:hidden">Follow </span>JUKTI on Facebook
+          </span>
+          <ArrowIcon />
+        </a>
+      </section>
+
+      {/* Members */}
+      <section
+        aria-labelledby="members-title"
+        className="flex flex-col justify-center rounded-b-[inherit] border-t border-glass-border bg-[linear-gradient(160deg,rgb(255_255_255/0.04),transparent_55%)] px-6 py-10 sm:px-10 md:rounded-l-none md:rounded-r-[inherit] md:border-t-0 md:border-l"
+      >
+        <Eyebrow>Already a member?</Eyebrow>
+        <h2 id="members-title" className="mt-3 font-heading text-[clamp(1.3rem,2.1vw,1.75rem)] leading-tight">
+          {user ? "No membership on this account" : "Sign in to your account"}
+        </h2>
+        <p className="mt-3 leading-relaxed text-body/85">
+          {user ? (
+            <>
+              You’re signed in as <span className="break-all text-fg">{user.email}</span>. Members sign in with their IUB email, or the
+              personal Gmail they linked.
+            </>
+          ) : (
+            "Recruitment being closed doesn’t affect members. Sign in to keep your profile up to date and use your member card."
+          )}
+        </p>
+
+        <ul className="mt-7 grid gap-4">
+          {memberPerks.map(({ Icon, title, text }) => (
+            <li key={title} className="flex items-center gap-3.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[12px] border border-flare/35 bg-lava/10 text-[1.15rem] text-flare">
+                <Icon />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-medium text-fg">{title}</span>
+                <span className="block text-[0.9rem] leading-snug text-body/75">{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {user ? (
+          <form action={signOut} className="mt-8">
+            <input type="hidden" name="next" value="/join" />
+            <button type="submit" className="btn-pill btn-ghost w-full">
+              Sign out and switch account
+            </button>
+          </form>
+        ) : (
+          <>
+            <GoogleSignIn next="/join" label="Sign in with Google" className="mt-8" />
+            <p className="mt-3 text-center text-[0.82rem] leading-relaxed text-muted">Use your IUB email, or the personal Gmail you linked to your account.</p>
+          </>
+        )}
+        {signInFailed && (
+          <p role="alert" className="mt-3 text-[0.92rem] text-[#ff8f7a]">
+            Sign-in didn’t complete. Please try again.
+          </p>
+        )}
+      </section>
+    </Reveal>
   );
 }
 

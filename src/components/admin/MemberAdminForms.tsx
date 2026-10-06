@@ -1,8 +1,51 @@
 "use client";
 
-import { moderateMember, saveExecutive, updateImport } from "@/lib/admin/actions/members";
+import { useActionState } from "react";
+import { moderateMember, saveExecutive, setRegistrationOpen, updateImport } from "@/lib/admin/actions/members";
+import type { ActionState } from "@/lib/admin/form";
+import { cn } from "@/lib/cn";
 import type { Member } from "@/lib/members/types";
 import { AdminForm, TextField, Toggle } from "./forms";
+
+/** Admin > Members: the switch that opens or closes registration on /join. Flips straight away. */
+export function RegistrationSwitch({ open }: { open: boolean }) {
+  const [state, formAction, pending] = useActionState(setRegistrationOpen, { status: "idle" } as ActionState);
+  // While saving, show where it's going.
+  const on = pending ? !open : open;
+  return (
+    <form action={formAction} className="flex items-center gap-4">
+      <input type="hidden" name="open" value={String(!open)} />
+      <button
+        type="submit"
+        role="switch"
+        aria-checked={on}
+        aria-labelledby="registration-state"
+        disabled={pending}
+        className={cn(
+          "relative h-8 w-14 shrink-0 cursor-pointer rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-flare disabled:cursor-wait",
+          on ? "border-flare bg-lava" : "border-glass-border bg-white/10",
+        )}
+      >
+        <span aria-hidden className={cn("absolute top-[3px] left-[3px] size-6 rounded-full bg-white shadow-md transition-transform", on && "translate-x-6")} />
+      </button>
+      <div className="min-w-0">
+        <p id="registration-state" className="font-medium text-fg">
+          {on ? "Registration is open" : "Registration is closed"}
+        </p>
+        <p className="mt-0.5 text-[0.88rem] leading-relaxed text-muted">
+          {on
+            ? "Students can register on the Join page."
+            : "The Join page says we’re not recruiting members this semester and points to our Facebook page. Members can still sign in."}
+        </p>
+        {state.status === "error" && state.message && (
+          <p role="alert" className="mt-1 text-[0.85rem] text-[#ffb4a6]">
+            {state.message}
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}
 
 /** On a member's page: what others see of them (the public list on /team and the members directory). */
 export function MemberModerationForm({ member }: { member: Member }) {

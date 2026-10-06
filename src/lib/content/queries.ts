@@ -116,6 +116,16 @@ export async function getSocials(): Promise<Socials> {
   return { ...defaults, ...Object.fromEntries(Object.entries(saved ?? {}).filter(([, v]) => typeof v === "string" && v)) };
 }
 
+/** Whether students can register on /join. Open unless closed in Admin > Members. */
+export async function getRegistrationOpen(): Promise<boolean> {
+  "use cache";
+  cacheTag(SETTINGS_TAG);
+  cacheLife("hours");
+  if (!supabaseEnv) return true;
+  const saved = await setting<{ open?: boolean }>("members.registration");
+  return saved?.open !== false;
+}
+
 export type MemorialContent = {
   tribute: string[];
   farewell: string;

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ActionButton, inputClass } from "@/components/admin/forms";
-import { ImportEditForm } from "@/components/admin/MemberAdminForms";
+import { ImportEditForm, RegistrationSwitch } from "@/components/admin/MemberAdminForms";
 import { removeImport, setImportHidden } from "@/lib/admin/actions/members";
-import { Cell, Empty, formatWhen, PageHeader, PageSkeleton, Pill, Row, Table } from "@/components/admin/ui";
+import { Cell, Empty, formatWhen, PageHeader, PageSkeleton, Panel, Pill, Row, Table } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { getExecutiveNames, type ImportedMember, listImportsForAdmin, listMembersForAdmin } from "@/lib/admin/data/members";
 import { cn } from "@/lib/cn";
+import { getRegistrationOpen } from "@/lib/content/queries";
 import { memberStatuses, statusInfo, statusPillTone as pillTone } from "@/lib/members/options";
 import { intakeLabel } from "@/lib/members/semester";
 import type { Member } from "@/lib/members/types";
@@ -32,7 +33,13 @@ function matches(m: Member, q: string) {
 
 async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "searchParams">) {
   const admin = await requireArea("members");
-  const [params, members, executives, imported] = await Promise.all([searchParams, listMembersForAdmin(admin), getExecutiveNames(admin), listImportsForAdmin(admin)]);
+  const [params, members, executives, imported, registrationOpen] = await Promise.all([
+    searchParams,
+    listMembersForAdmin(admin),
+    getExecutiveNames(admin),
+    listImportsForAdmin(admin),
+    getRegistrationOpen(),
+  ]);
   if (params.show === "imported") return <Imported imported={imported} executives={executives} counts={counts(members, imported)} q={typeof params.q === "string" ? params.q.trim().toLowerCase() : ""} />;
   const tab = memberStatuses.find((s) => s === params.show) ?? "pending";
   const q = typeof params.q === "string" ? params.q.trim().toLowerCase() : "";
@@ -51,6 +58,9 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
           Download CSV
         </a>
       </PageHeader>
+      <Panel className="mb-5">
+        <RegistrationSwitch open={registrationOpen} />
+      </Panel>
       {executives.size === 0 && (
         <p className="mb-5 rounded-[14px] border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-[0.92rem] text-body">
           No executive codes are set up, so new registrations can enter any code.{" "}

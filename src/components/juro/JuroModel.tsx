@@ -27,7 +27,6 @@ const ENTER_DELAY = 0.5;
 const ENTER_DURATION = 1.1;
 const FIRST_WAVE_AT = ENTER_DELAY + 0.7;
 const WAVE_DURATION = 3;
-const GREETING = "Hi, I'm Juro!";
 
 type Rig = {
   root: THREE.Group | null;
@@ -112,7 +111,7 @@ function animate(
     a.seenEnterId = brain.enterId;
     a.enterStart = t + 0.05;
     a.waveStart = a.enterStart + (FIRST_WAVE_AT - ENTER_DELAY);
-    a.waveMessage = GREETING;
+    a.waveMessage = brain.greeting;
   }
 
   // Waves: the first one greets the visitor; later ones are requested by the page.
@@ -301,7 +300,7 @@ export function JuroModel({ brain }: { brain: React.RefObject<JuroBrain> }) {
     enterStart: ENTER_DELAY,
     seenEnterId: 0,
     waveStart: FIRST_WAVE_AT,
-    waveMessage: GREETING,
+    waveMessage: brain.current.greeting,
     seenWaveId: 0,
     saying: false,
     velocity: 0,

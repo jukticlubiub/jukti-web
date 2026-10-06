@@ -28,6 +28,8 @@ export type JuroBrain = {
    */
   resolution: number;
   hovered: boolean;
+  /** What he says when he pops up and waves hello. */
+  greeting: string;
   /** Bump the id to make Juro wave, with what his speech bubble says. */
   waveRequest: { id: number; message: string };
   reducedMotion: boolean;
@@ -46,6 +48,7 @@ export function createBrain(): JuroBrain {
     enterId: 0,
     resolution: 1,
     hovered: false,
+    greeting: "Hi, I'm Juro!",
     waveRequest: { id: 0, message: "" },
     reducedMotion: false,
     say: () => {},
