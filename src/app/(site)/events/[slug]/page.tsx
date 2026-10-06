@@ -233,7 +233,7 @@ async function RsvpBlock({
   const [state, query] = await Promise.all([getRsvpState(event), searchParams]);
   return (
     <RsvpPanel
-      event={{ id: event.id, slug: event.slug, title: event.title, startsAt: event.startsAt, hasPhotos }}
+      event={{ id: event.id, slug: event.slug, title: event.title, startsAt: event.startsAt, hasPhotos, fee: event.fee ?? null }}
       initial={state}
       googleUrl={googleUrl}
       icsPath={icsPath}

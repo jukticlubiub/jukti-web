@@ -1,35 +1,8 @@
 import "server-only";
 import { emailLayout, escapeHtml, formatEmailTime, textToHtml } from "@/lib/mail/layout";
-import { type Mail, sendMail } from "@/lib/mail/send";
+import { clubInbox, deliver } from "@/lib/mail/deliver";
 import { site } from "@/lib/site";
 import { type HelplineRole, helplineRoleLabels, type HelplineTopic, helplineTopicLabels, helplinePath } from "./types";
-
-/** The club inbox: every faculty email is sent to it, with the faculty in Bcc. */
-const clubInbox = () => process.env.CONTACT_TO_EMAIL || site.socials.email;
-
-/**
- * Only the production site emails faculty and students. Anywhere else (local
- * development, Vercel preview deployments) every helpline email goes to the club inbox
- * instead, marked as a test, so trying things out never emails the faculty.
- */
-const deliversForReal = process.env.NODE_ENV === "production" && (process.env.VERCEL_ENV ?? "production") === "production";
-
-function describe(addresses: string[]) {
-  if (addresses.length <= 3) return addresses.join(", ");
-  return `${addresses.slice(0, 2).join(", ")} and ${addresses.length - 2} others`;
-}
-
-async function deliver(mail: Mail) {
-  if (deliversForReal) return sendMail(mail);
-  const intended = [...[mail.to].flat(), ...(mail.bcc ?? [])];
-  return sendMail({
-    ...mail,
-    to: clubInbox(),
-    bcc: undefined,
-    subject: `[Test] ${mail.subject}`,
-    text: `Test email. On the live site this goes to: ${describe(intended)}.\n\n${mail.text}`,
-  });
-}
 
 /** Long questions are cut in the email; the button leads to the rest. */
 function clip(text: string, max = 1800) {

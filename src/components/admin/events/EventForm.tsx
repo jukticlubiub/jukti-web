@@ -58,6 +58,18 @@ export function EventForm({ event, live }: { event?: AdminEvent; live: boolean }
               <TextField label="RSVPs close (empty = when it starts)" name="rsvpDeadline" type="datetime-local" state={state} defaultValue={toDhakaInput(event?.rsvp.deadline)} />
             </div>
           </fieldset>
+          <fieldset className="grid gap-4 rounded-[14px] border border-glass-border p-4">
+            <legend className="px-2 text-[0.85rem] text-muted">Registration fee</legend>
+            <p className="text-[0.85rem] leading-relaxed text-muted">
+              Leave empty for a free event. With a fee, attendees pay by bKash using their ticket code as the reference, enter their bKash
+              number, and you mark them paid under RSVPs. Unpaid tickets can’t check in. The fee applies to RSVPs made after you set it.
+            </p>
+            <div className="grid gap-5 md:grid-cols-2">
+              <TextField label="Fee (taka)" name="feeAmount" type="number" min={0} state={state} defaultValue={event?.fee?.amount ?? ""} placeholder="e.g. 200" />
+              <TextField label="bKash number (empty = the club’s)" name="feeBkashNumber" type="tel" state={state} defaultValue={event?.fee?.bkashNumber ?? ""} placeholder="01XXXXXXXXX" />
+            </div>
+            <TextField label="Note for attendees (optional)" name="feeNote" state={state} defaultValue={event?.fee?.note ?? ""} placeholder="e.g. Includes lunch and a T-shirt" maxLength={500} />
+          </fieldset>
           <Toggle label="Published" name="published" defaultChecked={event?.published ?? false} hint="Unpublished events are only visible here." />
         </>
       )}

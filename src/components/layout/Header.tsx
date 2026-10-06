@@ -9,6 +9,7 @@ import { CseLogo, IubLogo } from "@/components/brand/AffiliationLogos";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/cn";
 import { joinLink, navLinks } from "@/lib/site";
+import { AccountButton, useSessionUser } from "./AccountButton";
 
 const SCROLLED_AT_PX = 40;
 const menuLinks = [{ label: "Home", href: "/" }, ...navLinks];
@@ -63,7 +64,8 @@ export function Header() {
           </Suspense>
         </nav>
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <AccountButton className="hidden lg:block" />
           <a
             href="https://iub.ac.bd/campus-life/clubs-at-iub/jukti---the-iub-cse-club"
             target="_blank"
@@ -163,9 +165,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
           </div>
           <MobileNavList onClose={onClose} />
           <div className="flex items-center justify-between">
-            <Link href={joinLink.href} onClick={onClose} className="btn-pill btn-primary">
-              {joinLink.label}
-            </Link>
+            <MobileAccountLink onClose={onClose} />
             <div className="flex items-center gap-4">
               <CseLogo className="w-10" />
               <span aria-hidden className="h-9 w-px bg-fg/25" />
@@ -213,5 +213,15 @@ function MobileNavList({ onClose }: { onClose: () => void }) {
         })}
       </ul>
     </nav>
+  );
+}
+
+/** "Join Us" in the drawer, or "Your account" once signed in. */
+function MobileAccountLink({ onClose }: { onClose: () => void }) {
+  const user = useSessionUser();
+  return (
+    <Link href={user ? "/account" : joinLink.href} onClick={onClose} className="btn-pill btn-primary">
+      {user ? "Your account" : joinLink.label}
+    </Link>
   );
 }

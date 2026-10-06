@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { RevokeRoleButton, GrantRolesForm } from "@/components/admin/RoleForms";
 import { Cell, Empty, PageHeader, Panel, Pill, Row, Table, formatWhen, PageSkeleton } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
+import { getMembersByEmail } from "@/lib/admin/data/members";
 import { getRoleHolders } from "@/lib/admin/data/users";
+import { Avatar } from "@/components/members/AccountHeader";
 import { roleInfo } from "@/lib/admin/roles";
 
 // Signed out, the layout shows the sign-in screen instead of this page (see admin/layout.tsx).
@@ -21,6 +24,7 @@ export default function UsersPage() {
 async function Users() {
   const admin = await requireArea("users");
   const holders = await getRoleHolders(admin);
+  const members = await getMembersByEmail(admin, holders.map((h) => h.email));
 
   return (
     <>
@@ -37,7 +41,17 @@ async function Users() {
               {holders.map((h) => (
                 <Row key={h.email}>
                   <Cell className="text-fg">
-                    {h.email}
+                    {members.get(h.email) ? (
+                      <Link href={`/admin/members/${members.get(h.email)!.id}`} className="flex items-center gap-3 hover:text-flare">
+                        <Avatar name={members.get(h.email)!.name} url={members.get(h.email)!.photoUrl} className="size-9 text-[1.2rem]" />
+                        <span>
+                          <span className="block">{members.get(h.email)!.name}</span>
+                          <span className="block text-[0.82rem] text-muted">{h.email}</span>
+                        </span>
+                      </Link>
+                    ) : (
+                      h.email
+                    )}
                     {h.email === admin.email && <span className="ml-2 text-[0.8rem] text-muted">(you)</span>}
                   </Cell>
                   <Cell>

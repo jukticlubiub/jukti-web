@@ -52,6 +52,11 @@ export const imagePresets = {
     shapes: [{ label: "Square", aspect: 1, width: 400 }],
     round: true,
   },
+  memberAvatar: {
+    usedFor: "your profile, member card and the members directory",
+    shapes: [{ label: "Profile photo", aspect: 1, width: 512 }],
+    round: true,
+  },
   storyPhoto: {
     usedFor: "the story map on /about (4:3 cards)",
     shapes: [{ label: "Story card (4:3)", aspect: 4 / 3, width: 1600 }],

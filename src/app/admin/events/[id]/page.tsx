@@ -4,11 +4,14 @@ import { Suspense } from "react";
 import { EventForm } from "@/components/admin/events/EventForm";
 import { GalleryManager } from "@/components/admin/events/GalleryManager";
 import { RecapForm } from "@/components/admin/events/RecapForm";
+import { Attendance } from "@/components/admin/events/Attendance";
+import { CheckInScanner } from "@/components/admin/events/CheckInScanner";
 import { RsvpTable } from "@/components/admin/events/RsvpTable";
 import { PageHeader, PageSkeleton, Panel, Pill, formatWhen } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { requestTime } from "@/lib/events/now";
-import { getAdminEvent, getEventPhotosForAdmin, getRegistrations } from "@/lib/admin/data/events";
+import { getAdminEvent, getEventPhotosForAdmin, getRegistrations, getStationScans, getStations } from "@/lib/admin/data/events";
+import type { Admin } from "@/lib/admin/access";
 import { canAccess, canOpenEvents } from "@/lib/admin/roles";
 import { cn } from "@/lib/cn";
 
@@ -34,7 +37,13 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
   const manager = canAccess(admin.roles, "events");
   const pr = admin.roles.includes("pr_editor") || admin.roles.includes("master_admin");
   const tabs = [
-    ...(manager ? [{ value: "details", label: "Details" }, { value: "rsvps", label: `RSVPs (${event.rsvp.registered + event.rsvp.waitlisted})` }] : []),
+    ...(manager
+      ? [
+          { value: "details", label: "Details" },
+          { value: "rsvps", label: `RSVPs (${event.rsvp.registered + event.rsvp.waitlisted})` },
+          ...(event.rsvp.enabled ? [{ value: "checkin", label: "Check-in & food" }] : []),
+        ]
+      : []),
     ...(pr ? [{ value: "recap", label: "Recap & gallery" }] : []),
   ];
   const tab = tabs.some((t) => t.value === rawTab) ? (rawTab as string) : tabs[0].value;
@@ -87,6 +96,7 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
           {!live && <p className="mt-4 text-[0.85rem] text-muted">Preview mode: the people who RSVP’d appear here once Supabase is connected.</p>}
         </Panel>
       )}
+      {tab === "checkin" && <CheckIn admin={admin} eventId={event.id} live={live} />}
       {tab === "recap" && (
         <div className="grid gap-6">
           {Date.parse(event.endsAt) > (await requestTime()) && (
@@ -105,3 +115,24 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
     </>
   );
 }
+
+/** Event day: scan at the entry and at stations (Lunch…), and watch who's in and who's been served. */
+async function CheckIn({ admin, eventId, live }: { admin: Admin; eventId: string; live: boolean }) {
+  const [registrations, stations] = await Promise.all([getRegistrations(admin, eventId), getStations(admin, eventId)]);
+  const scans = await getStationScans(admin, stations);
+  return (
+    <div className="grid gap-6">
+      <Panel
+        title="Scan"
+        description="Pick where you are, then scan the QR code on a member’s card (Account → Member card) or type their member number. Green: let them in / serve them. Red: they’ve already had it."
+      >
+        <CheckInScanner eventId={eventId} stations={stations} />
+        {!live && <p className="mt-4 text-[0.85rem] text-muted">Preview mode: scans are saved only once Supabase is connected.</p>}
+      </Panel>
+      <Panel title="Who’s here">
+        <Attendance eventId={eventId} registrations={registrations} stations={stations} scans={Object.fromEntries(scans)} />
+      </Panel>
+    </div>
+  );
+}
+
