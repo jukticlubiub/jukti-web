@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { Panel, PageHeader, Stat, formatWhen, PageSkeleton } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
@@ -82,7 +83,7 @@ async function Dashboard() {
         )}
 
         {d.master && (
-          <Panel title="Recent activity" actions={<a href="/admin/activity" className="text-[0.85rem] text-flare hover:underline">See all</a>}>
+          <Panel title="Recent activity" actions={<Link href="/admin/activity" className="text-[0.85rem] text-flare hover:underline">See all</Link>}>
             {activity.length === 0 ? (
               <p className="text-[0.92rem] text-muted">{admin.mode === "preview" ? "The activity log fills up once Supabase is connected." : "No changes yet."}</p>
             ) : (

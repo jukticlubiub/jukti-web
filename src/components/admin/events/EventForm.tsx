@@ -17,7 +17,7 @@ export function EventForm({ event, live }: { event?: AdminEvent; live: boolean }
     <AdminForm action={saveEvent} submitLabel={event ? "Save event" : "Create event"}>
       {(state) => (
         <>
-          {!event && <OpenCreated id={state.id} href={toEventPage} />}
+          {!event && <OpenCreated id={state.id} href={toEventPage} label="Opening the event…" />}
           {event && <input type="hidden" name="id" value={event.id} />}
           <div className="grid gap-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
             <TextField label="Title" name="title" state={state} defaultValue={event?.title} required />

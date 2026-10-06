@@ -54,7 +54,7 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
         <Link href="/admin/members/executives" className="btn-pill btn-ghost text-[0.8rem]">
           Executive codes
         </Link>
-        <a href="/admin/members/members.csv" className="btn-pill btn-ghost text-[0.8rem]">
+        <a href="/admin/members/members.csv" download className="btn-pill btn-ghost text-[0.8rem]">
           Download CSV
         </a>
       </PageHeader>

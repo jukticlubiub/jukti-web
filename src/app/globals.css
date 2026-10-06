@@ -277,6 +277,16 @@
   animation: lava-drift var(--d, 26s) ease-in-out var(--delay, 0s) infinite alternate;
 }
 
+/* The admin panel's loading bar: a short bar sliding across the top (see AdminShell). */
+@keyframes admin-nav-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
 @keyframes lava-drift {
   0% {
     transform: translate(0, 0) scale(1);

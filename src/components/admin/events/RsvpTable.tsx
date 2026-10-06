@@ -38,7 +38,7 @@ export function RsvpTable({ registrations, csvHref }: { registrations: Registrat
             <span className="text-muted">payments to check</span>
           </span>
         )}
-        <a href={csvHref} className="ml-auto btn-pill btn-ghost h-9 px-4 text-[0.75rem]">Download CSV</a>
+        <a href={csvHref} download className="ml-auto btn-pill btn-ghost h-9 px-4 text-[0.75rem]">Download CSV</a>
       </div>
       <div className="flex flex-wrap gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, ID, ticket or bKash" aria-label="Search RSVPs" className={cn(inputClass, "h-10 max-w-xs text-[0.9rem]")} />

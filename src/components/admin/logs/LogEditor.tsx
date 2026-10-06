@@ -24,7 +24,7 @@ export function LogEditor({ log, live }: { log?: AdminLog; live: boolean }) {
     <AdminForm action={saveLog} submitLabel={log ? "Save" : "Create log"}>
       {(state) => (
         <>
-          {!log && <OpenCreated id={state.id} href={toLogPage} />}
+          {!log && <OpenCreated id={state.id} href={toLogPage} label="Opening the draft…" />}
           {log && <input type="hidden" name="id" value={log.id} />}
           <div className="grid gap-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
             <TextField label="Title" name="title" state={state} defaultValue={log?.title} />

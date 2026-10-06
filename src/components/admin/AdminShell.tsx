@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/brand/Logo";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/cn";
@@ -15,10 +15,59 @@ function isCurrent(pathname: string, href: string) {
   return href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Give up on showing a click as loading after this long (a navigation that failed or was cancelled). */
+const NAVIGATING_TIMEOUT_MS = 20_000;
+
+/**
+ * Whether a link clicked in the panel is still loading. Admin pages render on the server on
+ * every visit, and when only a tab or filter changes (?tab=recap, ?view=past) the current page
+ * stays on screen until the new one is ready, so without this a click can look like it did nothing.
+ */
+function useNavigating() {
+  const pathname = usePathname();
+  const here = `${pathname}?${useSearchParams().toString()}`;
+  const hereRef = useRef(here);
+  // Where we were when the link was clicked; loading lasts until the address changes.
+  const [from, setFrom] = useState<string | null>(null);
+  const [seen, setSeen] = useState(here);
+  if (seen !== here) {
+    setSeen(here);
+    setFrom(null);
+  }
+
+  useEffect(() => {
+    hereRef.current = here;
+  }, [here]);
+
+  useEffect(() => {
+    let timer = 0;
+    // Capture phase: <Link> cancels the browser's own navigation, so look before it does.
+    const onClick = (e: MouseEvent) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target instanceof Element ? e.target.closest("a") : null;
+      if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return; // same page, or a #section
+      setFrom(hereRef.current);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setFrom(null), NAVIGATING_TIMEOUT_MS);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  return from !== null && from === here;
+}
+
 /** The admin panel's frame: sidebar (a drawer on phones), top bar and content. */
 export function AdminShell({ admin, nav, children }: { admin: ShellAdmin; nav: NavGroup[]; children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const navigating = useNavigating();
 
   // Close the drawer after navigating.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -75,6 +124,16 @@ export function AdminShell({ admin, nav, children }: { admin: ShellAdmin; nav: N
 
   return (
     <div className="flex min-h-svh">
+      {/* Loading bar while a clicked page loads. */}
+      <div
+        role="progressbar"
+        aria-label="Loading page"
+        aria-hidden={!navigating}
+        className={cn("pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden transition-opacity duration-200", navigating ? "opacity-100" : "opacity-0")}
+      >
+        <div className="h-full w-2/5 bg-flare shadow-[0_0_12px_var(--color-flare)] motion-safe:animate-[admin-nav-progress_1.1s_ease-in-out_infinite] motion-reduce:w-full" />
+      </div>
+
       {/* Sidebar on desktop */}
       <aside className="sticky top-0 hidden h-svh w-64 shrink-0 border-r border-glass-border bg-[#0d0b0a] px-4 py-6 lg:block">{sidebar}</aside>
 
@@ -125,7 +184,16 @@ export function AdminShell({ admin, nav, children }: { admin: ShellAdmin; nav: N
 
         {admin.mode === "preview" && <PreviewBar roles={admin.roles} />}
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-10">{children}</main>
+        {/* While a clicked page loads, the current one dims (after a beat, so quick loads don't flicker). */}
+        <main
+          aria-busy={navigating}
+          className={cn(
+            "mx-auto w-full max-w-6xl flex-1 px-4 py-8 transition-opacity sm:px-6 lg:px-10",
+            navigating ? "pointer-events-none opacity-45 delay-150 duration-300" : "opacity-100 duration-150",
+          )}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

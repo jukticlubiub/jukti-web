@@ -19,7 +19,7 @@ export function PastEventForm({ event, live }: { event?: AdminEvent; live: boole
     <AdminForm action={savePastEvent} submitLabel={event ? "Save" : "Add past event"}>
       {(state) => (
         <>
-          {!event && <OpenCreated id={state.id} href={toGallery} />}
+          {!event && <OpenCreated id={state.id} href={toGallery} label="Opening the photo gallery…" />}
           {event && <input type="hidden" name="id" value={event.id} />}
           <div className="grid gap-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
             <TextField label="Title" name="title" state={state} defaultValue={event?.title} required />
