@@ -93,30 +93,30 @@ export const eclipseFragment = /* glsl */ `
 
     // Pointer light: the glow leans toward the cursor.
     float mouseLight = exp(-length(px - uMouse) / (0.32 * W));
-    sky += C_LAVA * mouseLight * 0.12 * (0.25 + ty);
+    sky += C_LAVA * mouseLight * 0.18 * (0.25 + ty);
 
     // Lava: noise in rim-aligned coordinates so it flows along the arc and drifts upward.
     float along = atan(d.x, -d.y) * R / (0.16 * W);
     vec2 q = vec2(along, outside / (0.065 * W));
     float heat = 0.0;
-    float band = exp(-outside / (0.045 * W)) * (0.15 + 0.7 * side * side);
+    float band = exp(-outside / (0.07 * W)) * (0.45 + 0.75 * side * side);
     if (band > 0.004) {
-      vec2 warp = vec2(fbm(q * 0.9 + vec2(0.0, -0.10 * t)),
-                       fbm(q * 0.9 + vec2(4.7, 1.3) + vec2(0.07 * t, 0.0)));
-      float lava = fbm(q + 2.2 * warp + vec2(0.035 * t, -0.08 * t));
-      heat = smoothstep(0.36, 0.84, lava) * band * uHeat;
+      vec2 warp = vec2(fbm(q * 0.9 + vec2(0.0, -0.14 * t)),
+                       fbm(q * 0.9 + vec2(4.7, 1.3) + vec2(0.1 * t, 0.0)));
+      float lava = fbm(q + 2.4 * warp + vec2(0.05 * t, -0.11 * t));
+      heat = smoothstep(0.3, 0.76, lava) * band * uHeat;
     }
-    vec3 outsideCol = sky + lavaRamp(heat) * 0.8;
+    vec3 outsideCol = sky + lavaRamp(heat) * 1.1;
 
     // Planet body: warm just inside the rim, black toward the middle. The rim pulses with the lava.
     float rimHeat = 0.0;
-    if (inside < 0.2 * W) rimHeat = smoothstep(0.35, 0.8, fbm(vec2(along * 1.3, t * 0.12)));
+    if (inside < 0.2 * W) rimHeat = smoothstep(0.3, 0.75, fbm(vec2(along * 1.3, t * 0.18)));
     vec3 body = mix(C_PLANET, vec3(0.0), smoothstep(0.1 * H, 0.6 * H, inside));
     float inner = inside / (0.057 * W);
-    body += C_RIM_IN * exp(-inner * inner) * (0.95 + 0.3 * rimHeat * uHeat);
+    body += C_RIM_IN * exp(-inner * inner) * (1.0 + 0.6 * rimHeat * uHeat);
 
     vec3 col = mix(outsideCol, body, smoothstep(0.75 * uDpr, -0.75 * uDpr, sd));
-    col += C_RIM_LINE * exp(-abs(sd) / (1.5 * uDpr)) * (0.5 + 0.5 * rimHeat * uHeat);
+    col += C_RIM_LINE * exp(-abs(sd) / (1.5 * uDpr)) * (0.7 + 0.9 * rimHeat * uHeat);
     return col;
   }
 

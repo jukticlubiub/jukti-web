@@ -18,8 +18,8 @@ export type EclipseCanvasProps = {
 
 // A calm moment in the lava loop, used for the still frame.
 const STILL_TIME = 14;
-const HEAT_BASE = 1;
-const HEAT_SCROLL_BOOST = 0.6;
+const HEAT_BASE = 1.2;
+const HEAT_SCROLL_BOOST = 0.7;
 
 function createUniforms() {
   return {
