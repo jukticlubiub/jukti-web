@@ -13,6 +13,8 @@ export type Alumnus = {
   term: string;
   photo?: string;
   linkedin?: string;
+  /** Former faculty advisors are listed apart from the alumni. Missing: alumnus. */
+  kind?: "alumnus" | "former_advisor";
 };
 
 const PLACEHOLDER_COUNT = 8;

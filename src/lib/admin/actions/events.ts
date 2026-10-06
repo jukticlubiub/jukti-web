@@ -108,6 +108,77 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
   return ok(previous, id ? "Event saved." : "Event created.", res.data.id);
 }
 
+/* ---------- Past events (PR Editors and Event Managers) ---------- */
+
+const canDocument = (roles: string[]) => isPR(roles) || roles.includes("event_manager");
+
+const pastSchema = z
+  .object({
+    title: z.string().min(1, "Give the event a title.").max(140),
+    slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Lowercase letters, numbers and hyphens only."),
+    summary: z.string().max(300, "Keep the summary to a sentence or two."),
+    description: z.string().max(10000),
+    category: z.enum(eventCategories),
+    startsAt: z.string({ error: "Set when it started." }),
+    endsAt: z.string({ error: "Set when it ended." }),
+    venue: z.string().max(200),
+    coverUrl: z.string().nullable(),
+    coverAlt: z.string().max(200),
+    recap: z.string().max(10000, "Keep the recap under 10,000 characters."),
+  })
+  .refine((e) => Date.parse(e.endsAt) > Date.parse(e.startsAt), { message: "It must end after it starts.", path: ["endsAt"] })
+  .refine((e) => Date.parse(e.endsAt) < Date.now(), { message: "This is for events that are over. Use New event for upcoming ones.", path: ["endsAt"] });
+
+/**
+ * Add (or fix the details of) an event that already happened, to document it: no RSVPs,
+ * published straight away. New ones open on their Recap & gallery tab.
+ */
+export async function savePastEvent(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard(canDocument);
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const parsed = pastSchema.safeParse({
+    title: str(fd, "title"),
+    slug: str(fd, "slug") || slugify(str(fd, "title")),
+    summary: str(fd, "summary"),
+    description: str(fd, "description"),
+    category: str(fd, "category"),
+    startsAt: fromDhakaInput(str(fd, "startsAt")) ?? undefined,
+    endsAt: fromDhakaInput(str(fd, "endsAt")) ?? undefined,
+    venue: str(fd, "venue"),
+    coverUrl: optional(fd, "coverUrl"),
+    coverAlt: str(fd, "coverAlt"),
+    recap: str(fd, "recap"),
+  });
+  if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
+  const e = parsed.data;
+  if (e.coverUrl && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
+
+  const row = {
+    title: e.title,
+    slug: e.slug,
+    summary: e.summary,
+    description: e.description,
+    category: e.category,
+    starts_at: e.startsAt,
+    ends_at: e.endsAt,
+    venue: e.venue,
+    cover_url: e.coverUrl,
+    cover_alt: e.coverAlt,
+    recap: e.recap || null,
+    rsvp_enabled: false,
+    published: true,
+  };
+  const res = id ? await g.db.from("events").update(row).eq("id", id).select("id").maybeSingle() : await g.db.from("events").insert(row).select("id").single();
+  if (res.error) {
+    if (res.error.message.includes("duplicate key")) return failed("Another event already uses that web address.", { slug: "Choose a different one." });
+    return failed(explainDbError(res.error.message));
+  }
+  if (!res.data) return failed("Only events that are over can be changed here.");
+  updateTag(EVENTS_TAG);
+  return ok(previous, id ? "Saved." : "Past event added. Now add its photos.", res.data.id);
+}
+
 /* ---------- RSVPs (Event Manager) ---------- */
 
 export async function cancelRegistration(previous: ActionState, fd: FormData): Promise<ActionState> {

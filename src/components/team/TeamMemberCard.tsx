@@ -25,7 +25,8 @@ const palettes = {
   },
 } as const;
 
-// Shown on hover or keyboard focus; always shown on touch screens, which can't hover.
+// Shown on hover or keyboard focus; always shown on touch screens, which can't hover
+// (there, small and white on a slim dark strip, so the photo stays clear).
 const revealOnHover =
   "translate-y-3 opacity-0 transition-[opacity,translate] duration-500 ease-reveal group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 pointer-coarse:translate-y-0 pointer-coarse:opacity-100";
 
@@ -56,7 +57,7 @@ export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProp
           fill
           draggable={false}
           sizes="(max-width: 768px) 62vw, 23vw"
-          className="object-cover object-bottom grayscale transition-[filter,scale] duration-700 ease-reveal group-hover:scale-[1.035] group-hover:grayscale-0 group-focus-visible:grayscale-0"
+          className="object-cover object-bottom grayscale transition-[filter,scale] duration-700 ease-reveal group-hover:scale-[1.035] group-hover:grayscale-0 group-focus-visible:grayscale-0 pointer-coarse:grayscale-0"
         />
       ) : (
         <Silhouette className={palette.silhouette} />
@@ -65,21 +66,23 @@ export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProp
       <div
         aria-hidden
         className={cn(
-          "absolute inset-0 opacity-0 transition-opacity duration-500 ease-ui group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:opacity-100",
+          "absolute inset-0 opacity-0 transition-opacity duration-500 ease-ui group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:hidden",
           palette.fade,
         )}
       />
+      {/* Touch screens: a slim strip for the name instead of the hover gradient. */}
+      <div aria-hidden className="absolute inset-x-0 bottom-0 hidden h-[32%] bg-[linear-gradient(to_top,rgb(0_0_0/0.85),rgb(0_0_0/0.55)_45%,transparent)] pointer-coarse:block" />
 
-      <div className="absolute inset-x-0 bottom-0 px-[6cqw] pb-[11cqw] text-center">
+      <div className="absolute inset-x-0 bottom-0 px-[6cqw] pb-[11cqw] text-center pointer-coarse:pb-[5cqw]">
         <p
           className={cn(
-            "font-heading text-[7.2cqw] leading-tight tracking-[-0.01em] text-black [-webkit-text-stroke:0.02em_currentColor]",
+            "font-heading text-[7.2cqw] leading-tight tracking-[-0.01em] text-black [-webkit-text-stroke:0.02em_currentColor] pointer-coarse:text-[6.2cqw] pointer-coarse:text-white",
             revealOnHover,
           )}
         >
           {person.name}
         </p>
-        <p className={cn("mt-[0.35em] text-[6.6cqw] leading-tight tracking-[-0.02em] delay-75", palette.role, revealOnHover)}>
+        <p className={cn("mt-[0.35em] text-[6.6cqw] leading-tight tracking-[-0.02em] delay-75", palette.role, revealOnHover, "pointer-coarse:text-[5.4cqw] pointer-coarse:text-white/85")}>
           {person.role}
         </p>
       </div>

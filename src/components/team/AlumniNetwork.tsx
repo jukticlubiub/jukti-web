@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useId, useState } from "react";
 import { MaskReveal, Reveal } from "@/components/ui/Reveal";
+import { cn } from "@/lib/cn";
 import type { Alumnus } from "@/lib/data/alumni";
 import { Silhouette } from "./Silhouette";
 
@@ -13,10 +14,16 @@ function matches(person: Alumnus, query: string) {
   return `${person.name} ${person.role} ${person.term}`.toLowerCase().includes(query);
 }
 
-function AlumnusItem({ person }: { person: Alumnus }) {
+/** A past member (or, `light`, a former faculty advisor): round photo, name, role and term. */
+export function AlumnusItem({ person, light = false }: { person: Alumnus; light?: boolean }) {
   const body = (
     <>
-      <div className="relative aspect-square w-[clamp(84px,9.8vw,160px)] shrink-0 overflow-hidden rounded-full bg-[radial-gradient(90%_90%_at_50%_30%,#a83f13_55%,#7a2e0e_100%)] transition-shadow duration-500 ease-ui group-hover:shadow-[0_0_0_2px_#f57c48,0_0_36px_-6px_rgb(245_124_72/0.7)]">
+      <div
+        className={cn(
+          "relative aspect-square w-[clamp(84px,9.8vw,160px)] shrink-0 overflow-hidden rounded-full transition-shadow duration-500 ease-ui group-hover:shadow-[0_0_0_2px_#f57c48,0_0_36px_-6px_rgb(245_124_72/0.7)]",
+          light ? "bg-[radial-gradient(90%_90%_at_50%_30%,#f6f3ef_55%,#cdc5bd_100%)]" : "bg-[radial-gradient(90%_90%_at_50%_30%,#a83f13_55%,#7a2e0e_100%)]",
+        )}
+      >
         {person.photo ? (
           <Image
             src={person.photo}
@@ -26,7 +33,7 @@ function AlumnusItem({ person }: { person: Alumnus }) {
             className="object-cover object-top grayscale transition-[filter,scale] duration-700 ease-reveal group-hover:scale-[1.06] group-hover:grayscale-0 group-focus-visible:grayscale-0"
           />
         ) : (
-          <Silhouette className="text-[#2b0e04]/60" />
+          <Silhouette className={light ? "text-black/15" : "text-[#2b0e04]/60"} />
         )}
       </div>
       <div className="min-w-0">

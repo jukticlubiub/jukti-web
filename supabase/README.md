@@ -24,6 +24,8 @@ the one-time setup, and how the panel's roles work.
    - `…_event_stations.sql`: scan stations at events (Lunch, Snacks…)
    - `…_event_tickets.sql`: a ticket (code + QR) for every RSVP, and paid events
    - `…_rsvp_guests.sql`: guests from outside IUB can RSVP (student ID optional)
+   - `…_past_events.sql`: PR Editors can add and document events that are already over
+   - `…_former_advisors.sql`: former faculty advisors, kept with the alumni
 2. **Load the starting content**: paste `seed/faculty.sql`, then `seed/content.sql`, into
    the SQL editor. For members, see **Members** below (the import and executive codes). (`content.sql` copies the team, alumni, story chapters, developers,
    board term and social links from `src/lib/data/`. It only fills empty tables, so it's

@@ -50,15 +50,16 @@ export async function getAlumni(): Promise<Alumnus[]> {
   cacheTag(TEAM_TAG);
   cacheLife("hours");
   if (!supabaseEnv) return fileAlumni;
-  const { data, error } = await createPublicClient().from("alumni").select("id, name, role, term, photo_url, linkedin").eq("active", true).order("position");
+  const { data, error } = await createPublicClient().from("alumni").select("id, name, role, term, photo_url, linkedin, kind").eq("active", true).order("position");
   if (error) throw new Error(`Couldn't load alumni: ${error.message}`);
-  return (data as { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null }[]).map((r) => ({
+  return (data as { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null; kind: "alumnus" | "former_advisor" }[]).map((r) => ({
     id: r.id,
     name: r.name,
     role: r.role,
     term: r.term,
     photo: r.photo_url ?? undefined,
     linkedin: r.linkedin ?? undefined,
+    kind: r.kind,
   }));
 }
 

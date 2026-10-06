@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AlumniNetwork } from "@/components/team/AlumniNetwork";
+import { FormerAdvisors } from "@/components/team/FormerAdvisors";
 import { MembersList } from "@/components/team/MembersList";
 import { TeamBackdrop } from "@/components/team/TeamBackdrop";
 import { TeamCarousel } from "@/components/team/TeamCarousel";
@@ -9,7 +10,7 @@ import { getPublicMembers } from "@/lib/members/public";
 
 export const metadata: Metadata = {
   title: "Team Jukti",
-  description: "Meet the minds behind JUKTI: the faculty advisors, executive panel, members and alumni of the Club of CSE, IUB.",
+  description: "Meet the minds behind JUKTI: the faculty advisors, executive panel, members, former advisors and alumni of the Club of CSE, IUB.",
 };
 
 export default async function TeamPage() {
@@ -48,7 +49,8 @@ export default async function TeamPage() {
       </section>
 
       <MembersList members={clubMembers} />
-      <AlumniNetwork alumni={alumni} />
+      <FormerAdvisors advisors={alumni.filter((a) => a.kind === "former_advisor")} />
+      <AlumniNetwork alumni={alumni.filter((a) => a.kind !== "former_advisor")} />
     </>
   );
 }

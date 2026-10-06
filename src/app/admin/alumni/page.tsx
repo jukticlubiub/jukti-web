@@ -7,7 +7,7 @@ import { listAlumniForAdmin } from "@/lib/admin/data/content";
 // Signed out, the layout shows the sign-in screen instead of this page (see admin/layout.tsx).
 export const instant = false;
 
-export const metadata = { title: "Alumni" };
+export const metadata = { title: "Alumni & former advisors" };
 
 export default function AlumniAdminPage() {
   return (
@@ -19,22 +19,43 @@ export default function AlumniAdminPage() {
 
 async function Alumni() {
   const admin = await requireArea("alumni");
-  const alumni = await listAlumniForAdmin(admin);
+  const all = await listAlumniForAdmin(admin);
   const live = admin.mode === "live";
+  const advisors = all.filter((a) => a.kind === "former_advisor");
+  const alumni = all.filter((a) => a.kind !== "former_advisor");
   return (
     <>
-      <PageHeader title="Alumni" description="The Alumni Network at the bottom of /team." />
-      <div className="grid gap-8">
-        <ul className="grid gap-2">
-          {alumni.map((a, i) => (
-            <EditableItem key={a.id} table="alumni" id={a.id} title={a.name} subtitle={`${a.role} ${a.term}`} imageUrl={a.photoUrl} shown={a.active} first={i === 0} last={i === alumni.length - 1}>
-              <AlumnusForm alumnus={a} live={live} />
-            </EditableItem>
-          ))}
-        </ul>
-        <Panel title="Add an alumnus">
-          <AlumnusForm live={live} />
-        </Panel>
+      <PageHeader title="Alumni & former advisors" description="Shown on /team: Former Faculty Advisors, then the Alumni Network." />
+      <div className="grid gap-10">
+        <section className="grid gap-4">
+          <h2 className="text-[1.1rem] text-fg">Former faculty advisors</h2>
+          {advisors.length > 0 && (
+            <ul className="grid gap-2">
+              {advisors.map((a, i) => (
+                <EditableItem key={a.id} table="alumni" kind="former_advisor" id={a.id} title={a.name} subtitle={`${a.role} ${a.term}`} imageUrl={a.photoUrl} shown={a.active} first={i === 0} last={i === advisors.length - 1}>
+                  <AlumnusForm alumnus={a} live={live} />
+                </EditableItem>
+              ))}
+            </ul>
+          )}
+          <Panel title="Add a former faculty advisor">
+            <AlumnusForm kind="former_advisor" live={live} />
+          </Panel>
+        </section>
+
+        <section className="grid gap-4">
+          <h2 className="text-[1.1rem] text-fg">Alumni</h2>
+          <ul className="grid gap-2">
+            {alumni.map((a, i) => (
+              <EditableItem key={a.id} table="alumni" kind="alumnus" id={a.id} title={a.name} subtitle={`${a.role} ${a.term}`} imageUrl={a.photoUrl} shown={a.active} first={i === 0} last={i === alumni.length - 1}>
+                <AlumnusForm alumnus={a} live={live} />
+              </EditableItem>
+            ))}
+          </ul>
+          <Panel title="Add an alumnus">
+            <AlumnusForm live={live} />
+          </Panel>
+        </section>
       </div>
     </>
   );

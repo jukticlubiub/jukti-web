@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventForm } from "@/components/admin/events/EventForm";
+import { PastEventForm } from "@/components/admin/events/PastEventForm";
 import { GalleryManager } from "@/components/admin/events/GalleryManager";
 import { RecapForm } from "@/components/admin/events/RecapForm";
 import { Attendance } from "@/components/admin/events/Attendance";
@@ -36,7 +37,10 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
 
   const manager = canAccess(admin.roles, "events");
   const pr = admin.roles.includes("pr_editor") || admin.roles.includes("master_admin");
+  const isOver = Date.parse(event.endsAt) < (await requestTime());
   const tabs = [
+    // PR Editors can fix the details of past events (they document them).
+    ...(!manager && pr && isOver ? [{ value: "past", label: "Details" }] : []),
     ...(manager
       ? [
           { value: "details", label: "Details" },
@@ -84,6 +88,11 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
       {tab === "details" && (
         <Panel>
           <EventForm event={event} live={live} />
+        </Panel>
+      )}
+      {tab === "past" && (
+        <Panel>
+          <PastEventForm event={event} live={live} />
         </Panel>
       )}
       {tab === "rsvps" && (

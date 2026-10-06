@@ -42,7 +42,7 @@ export async function moveRow(previous: ActionState, fd: FormData): Promise<Acti
   const g = await guard(cfg.area);
   if (!g.ok) return g.state;
   let q = g.db.from(table).select("id, position").order("position");
-  if (table === "team_members") q = q.eq("kind", str(fd, "kind"));
+  if (table === "team_members" || (table === "alumni" && str(fd, "kind"))) q = q.eq("kind", str(fd, "kind"));
   const { data } = await q;
   const list = (data as { id: string; position: number }[] | null) ?? [];
   const i = list.findIndex((r) => r.id === str(fd, "id"));
@@ -96,8 +96,11 @@ export async function saveAlumnus(previous: ActionState, fd: FormData): Promise<
   const parsed = alumnusSchema.safeParse({ name: str(fd, "name"), role: str(fd, "role"), term: str(fd, "term"), photoUrl: optional(fd, "photoUrl"), linkedin: optional(fd, "linkedin") });
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const a = parsed.data;
+  const kind = str(fd, "kind") === "former_advisor" ? "former_advisor" : "alumnus";
   const row = { name: a.name, role: a.role, term: a.term, photo_url: a.photoUrl, linkedin: a.linkedin };
-  const { error } = id ? await g.db.from("alumni").update(row).eq("id", id) : await g.db.from("alumni").insert({ ...row, position: await nextPosition(g.db, "alumni") });
+  const { error } = id
+    ? await g.db.from("alumni").update(row).eq("id", id)
+    : await g.db.from("alumni").insert({ ...row, kind, position: await nextPosition(g.db, "alumni", kind) });
   if (error) return failed(explainDbError(error.message));
   updateTag(TEAM_TAG);
   return ok(previous, id ? "Saved." : `Added ${a.name}.`);

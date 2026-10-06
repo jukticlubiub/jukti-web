@@ -90,16 +90,19 @@ export function TeamMemberForm({ member, kind, live }: { member?: AdminTeamMembe
   );
 }
 
-export function AlumnusForm({ alumnus, live }: { alumnus?: AdminAlumnus; live: boolean }) {
+/** An alumnus, or (with kind "former_advisor") a former faculty advisor. */
+export function AlumnusForm({ alumnus, live, kind = alumnus?.kind ?? "alumnus" }: { alumnus?: AdminAlumnus; live: boolean; kind?: AdminAlumnus["kind"] }) {
+  const advisor = kind === "former_advisor";
   return (
     <AdminForm action={saveAlumnus} submitLabel={alumnus ? "Save" : "Add"} resetOnSave={!alumnus}>
       {(state) => (
         <>
           {alumnus && <input type="hidden" name="id" value={alumnus.id} />}
+          <input type="hidden" name="kind" value={kind} />
           <div className="grid gap-4 md:grid-cols-3">
-            <TextField label="Name" name="name" state={state} defaultValue={alumnus?.name} />
-            <TextField label="Role" name="role" state={state} defaultValue={alumnus?.role ?? "Executive"} />
-            <TextField label="Term" name="term" state={state} defaultValue={alumnus?.term} placeholder="2024-25" />
+            <TextField label="Name" name="name" state={state} defaultValue={alumnus?.name} placeholder={advisor ? "e.g. Dr. A. B. Rahman" : undefined} />
+            <TextField label="Role" name="role" state={state} defaultValue={alumnus?.role ?? (advisor ? "Faculty Advisor" : "Executive")} />
+            <TextField label={advisor ? "Years" : "Term"} name="term" state={state} defaultValue={alumnus?.term} placeholder={advisor ? "2018-2023" : "2024-25"} />
           </div>
           <TextField label="LinkedIn (optional)" name="linkedin" state={state} defaultValue={alumnus?.linkedin} />
           <ImageField label="Photo (head and shoulders)" name="photoUrl" folder="alumni" preset="alumnus" defaultUrl={alumnus?.photoUrl} live={live} />

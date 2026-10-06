@@ -21,7 +21,9 @@ export async function Footer() {
       />
       <div className="relative mx-auto grid max-w-7xl gap-12 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-6">
-          <Logo className="w-44 text-fg" />
+          <Link href="/" aria-label="JUKTI home" className="inline-block w-fit transition-opacity hover:opacity-80">
+            <Logo className="w-44 text-fg" />
+          </Link>
           <p className="max-w-sm text-muted">{site.tagline}. Independent University, Bangladesh.</p>
           <Link href={joinLink.href} className="btn-pill btn-primary text-sm">
             {joinLink.label}
@@ -57,9 +59,11 @@ export async function Footer() {
             <p className="text-muted">Social links coming soon.</p>
           )}
           <div className="mt-10 flex items-center gap-5">
-            <CseLogo className="w-12" />
+            <a href="https://iub.ac.bd/academics/departments" target="_blank" rel="noreferrer" aria-label="Departments at IUB" className="transition-opacity hover:opacity-80">
+              <CseLogo className="w-12" />
+            </a>
             <span aria-hidden className="h-11 w-px bg-fg/25" />
-            <a href="https://iub.edu.bd" target="_blank" rel="noreferrer" className="transition-opacity hover:opacity-80">
+            <a href="https://iub.ac.bd" target="_blank" rel="noreferrer" aria-label="Independent University, Bangladesh" className="transition-opacity hover:opacity-80">
               <IubLogo className="w-[4.5rem]" />
             </a>
           </div>

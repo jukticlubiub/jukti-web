@@ -88,7 +88,7 @@ export const adminNav: NavGroup[] = [
       { area: "members", label: "Members", href: "/admin/members" },
       { area: "members", label: "Executive codes", href: "/admin/members/executives" },
       { area: "team", label: "Team", href: "/admin/team" },
-      { area: "alumni", label: "Alumni", href: "/admin/alumni" },
+      { area: "alumni", label: "Alumni & advisors", href: "/admin/alumni" },
       { area: "developers", label: "Developers", href: "/admin/developers" },
     ],
   },

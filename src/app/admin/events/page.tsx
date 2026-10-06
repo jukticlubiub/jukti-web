@@ -43,8 +43,11 @@ async function Events({ searchParams }: Pick<PageProps<"/admin/events">, "search
     <>
       <PageHeader
         title="Events"
-        description={manager ? "Create and publish events, and manage their RSVPs." : "Document past events: write the recap and add the photo gallery."}
+        description={manager ? "Create and publish events, and manage their RSVPs. Past events that were never on the site can be added too, to document them." : "Document past events: add ones that were never on the site, write the recap and add the photo gallery."}
       >
+        <Link href="/admin/events/past/new" className="btn-pill btn-ghost text-[0.8rem]">
+          Add a past event
+        </Link>
         {manager && (
           <Link href="/admin/events/new" className="btn-pill btn-primary text-[0.8rem]">
             New event
