@@ -17,7 +17,7 @@ export async function Footer() {
     <footer className="relative mt-auto overflow-hidden bg-void px-[clamp(1.25rem,4vw,4rem)] pt-20 pb-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 -bottom-48 mx-auto h-96 max-w-5xl rounded-full bg-ember-2/40 blur-[120px]"
+        className="pointer-events-none absolute inset-x-0 -bottom-48 mx-auto h-96 max-w-5xl rounded-full bg-ember-2/65 blur-[120px]"
       />
       <div className="relative mx-auto grid max-w-7xl gap-12 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-6">

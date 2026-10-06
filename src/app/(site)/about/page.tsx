@@ -15,7 +15,7 @@ export default async function AboutPage() {
     <div className="relative overflow-x-clip">
       <PageBackdrop />
       {/* A low warm glow at the foot of the page, where the line ends. */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[60rem] bg-[radial-gradient(60%_50%_at_70%_100%,rgb(102_42_17/0.45),transparent)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[60rem] bg-[radial-gradient(60%_50%_at_70%_100%,rgb(120_48_18/0.65),transparent)]" />
       <StoryMap chapters={storyChapters} />
     </div>
   );

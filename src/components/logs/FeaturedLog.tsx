@@ -14,7 +14,7 @@ export function FeaturedLog({ log }: { log: LogCardData }) {
     <section aria-labelledby="featured-log-title" className="relative">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-[10%] top-[20%] bottom-[-10%] rounded-[100%] bg-[radial-gradient(closest-side,rgb(102_42_17/0.55),transparent)]"
+        className="pointer-events-none absolute inset-x-[10%] top-[20%] bottom-[-10%] rounded-[100%] bg-[radial-gradient(closest-side,rgb(120_48_18/0.75),transparent)]"
       />
       <GlassCard tilt={false} className="group relative grid overflow-hidden bg-[rgb(18_10_7/0.55)] p-2.5 sm:p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="order-2 flex flex-col gap-6 px-3 pt-6 pb-4 sm:px-5 lg:order-1 lg:justify-center lg:py-12 lg:pr-[clamp(1.5rem,3vw,3.5rem)] lg:pl-[clamp(1.75rem,3.2vw,3.75rem)]">

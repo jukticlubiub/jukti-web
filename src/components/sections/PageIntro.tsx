@@ -7,7 +7,7 @@ export function PageIntro({ title, children }: { title: string; children?: React
       <div aria-hidden className="bg-ribs pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,#000,transparent_85%)]" />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-[55%] mx-auto h-[60%] max-w-6xl rounded-[100%] bg-ember-2/45 blur-[110px]"
+        className="pointer-events-none absolute inset-x-0 top-[55%] mx-auto h-[60%] max-w-6xl rounded-[100%] bg-ember-2/70 blur-[110px]"
       />
       <div className="relative">
         <h1 className="font-heading text-[clamp(2.2rem,5vw,5.5rem)]">

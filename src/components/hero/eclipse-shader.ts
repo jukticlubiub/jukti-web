@@ -88,12 +88,12 @@ export const eclipseFragment = /* glsl */ `
     float side = smoothstep(0.0, 0.5 * W, abs(d.x));
     vec3 sky = mix(C_TOP, C_DUSK, smoothstep(0.0, 0.25 * H, px.y));
     sky = mix(sky, C_HORIZON, smoothstep(0.25 * H, 0.85 * H, px.y) * (0.55 + 0.45 * side));
-    sky += C_EMBER_1 * exp(-outside / (0.06 * W)) * (0.05 + 0.25 * side * side); // halo along the rim, toward the sides
+    sky += C_EMBER_1 * exp(-outside / (0.06 * W)) * (0.08 + 0.4 * side * side); // halo along the rim, toward the sides
     sky *= 1.0 - smoothstep(H, 1.3 * H, px.y);
 
     // Pointer light: the glow leans toward the cursor.
     float mouseLight = exp(-length(px - uMouse) / (0.32 * W));
-    sky += C_LAVA * mouseLight * 0.08 * (0.25 + ty);
+    sky += C_LAVA * mouseLight * 0.12 * (0.25 + ty);
 
     // Lava: noise in rim-aligned coordinates so it flows along the arc and drifts upward.
     float along = atan(d.x, -d.y) * R / (0.16 * W);
@@ -106,7 +106,7 @@ export const eclipseFragment = /* glsl */ `
       float lava = fbm(q + 2.2 * warp + vec2(0.035 * t, -0.08 * t));
       heat = smoothstep(0.36, 0.84, lava) * band * uHeat;
     }
-    vec3 outsideCol = sky + lavaRamp(heat) * 0.6;
+    vec3 outsideCol = sky + lavaRamp(heat) * 0.8;
 
     // Planet body: warm just inside the rim, black toward the middle. The rim pulses with the lava.
     float rimHeat = 0.0;

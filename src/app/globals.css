@@ -110,7 +110,7 @@
 @utility bg-ribs {
   background-image: repeating-linear-gradient(
     90deg,
-    rgb(255 255 255 / 0.045) 0 1px,
+    rgb(255 255 255 / 0.075) 0 1px,
     transparent 1px var(--rib)
   );
 }
@@ -243,7 +243,7 @@
     ),
     radial-gradient(
       circle calc(var(--planet-r) + 16cqw) at 50% var(--planet-cy),
-      rgb(102 42 17 / 0.55) var(--planet-r),
+      rgb(120 48 18 / 0.75) var(--planet-r),
       transparent calc(var(--planet-r) + 16cqw)
     ),
     linear-gradient(
@@ -272,7 +272,7 @@
   aspect-ratio: 1.2;
   translate: -50% -50%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, var(--c), transparent);
+  background: radial-gradient(closest-side, var(--c), color-mix(in srgb, var(--c) 45%, transparent) 60%, transparent);
   mix-blend-mode: screen;
   animation: lava-drift var(--d, 26s) ease-in-out var(--delay, 0s) infinite alternate;
 }
