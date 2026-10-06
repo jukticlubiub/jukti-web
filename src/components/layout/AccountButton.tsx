@@ -55,7 +55,12 @@ export function AccountButton({ className }: { className?: string }) {
     return (
       <Link
         href="/join"
-        className={cn("rounded-full border border-glass-border px-4 py-2 text-[0.88rem] text-fg transition-colors hover:border-flare/60 hover:text-flare", className)}
+        className={cn(
+          "inline-flex items-center rounded-full border border-glass-border px-4 py-2 text-[0.88rem] text-fg transition-colors hover:border-flare/60 hover:text-flare",
+          // On phones it sits next to the menu button: same height, and readable over the hero.
+          "max-lg:glass max-lg:h-11 max-lg:py-0",
+          className,
+        )}
       >
         Sign in
       </Link>

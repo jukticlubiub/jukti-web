@@ -65,7 +65,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center justify-end gap-3">
-          <AccountButton className="hidden lg:block" />
+          <AccountButton />
           <a
             href="https://iub.ac.bd/campus-life/clubs-at-iub/jukti---the-iub-cse-club"
             target="_blank"
