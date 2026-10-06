@@ -43,6 +43,17 @@ export type JuktiEvent = {
     deadline: string | null;
   };
   photoCount: number;
+  /** A registration fee, paid by bKash and verified by an Event Manager. Null or missing: free. */
+  fee?: EventFee | null;
+};
+
+export type EventFee = {
+  /** In taka. */
+  amount: number;
+  /** Where to send it; falls back to the club's number. */
+  bkashNumber: string | null;
+  /** Anything else attendees should know (e.g. "includes lunch and a T-shirt"). */
+  note: string | null;
 };
 
 export type EventPhoto = {

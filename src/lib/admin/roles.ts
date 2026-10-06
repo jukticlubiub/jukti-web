@@ -1,6 +1,6 @@
 /** Admin roles, the areas of the panel, and which role owns each area. Safe to import anywhere. */
 
-export const adminRoles = ["master_admin", "event_manager", "pr_editor", "academic_coordinator", "team_manager"] as const;
+export const adminRoles = ["master_admin", "event_manager", "pr_editor", "academic_coordinator", "team_manager", "membership_manager"] as const;
 export type AdminRole = (typeof adminRoles)[number];
 
 export const roleInfo: Record<AdminRole, { label: string; description: string }> = {
@@ -9,6 +9,7 @@ export const roleInfo: Record<AdminRole, { label: string; description: string }>
   pr_editor: { label: "PR Editor", description: "Jukti Logs, event recaps and galleries, the About story, memories and the inbox." },
   academic_coordinator: { label: "Academic Coordinator", description: "Helpline moderation, the faculty directory and helpline seniors." },
   team_manager: { label: "Team Manager", description: "The executive panel, faculty advisors and alumni." },
+  membership_manager: { label: "Membership Manager", description: "Approves new members, manages executive codes, and moderates what members show publicly (photos, names, bios)." },
 };
 
 export type AdminArea =
@@ -20,6 +21,7 @@ export type AdminArea =
   | "helpline"
   | "faculty"
   | "seniors"
+  | "members"
   | "team"
   | "alumni"
   | "developers"
@@ -38,6 +40,7 @@ export const areaRole: Record<AdminArea, AdminRole> = {
   helpline: "academic_coordinator",
   faculty: "academic_coordinator",
   seniors: "academic_coordinator",
+  members: "membership_manager",
   team: "team_manager",
   alumni: "team_manager",
   developers: "master_admin",
@@ -82,6 +85,8 @@ export const adminNav: NavGroup[] = [
   {
     title: "People",
     items: [
+      { area: "members", label: "Members", href: "/admin/members" },
+      { area: "members", label: "Executive codes", href: "/admin/members/executives" },
       { area: "team", label: "Team", href: "/admin/team" },
       { area: "alumni", label: "Alumni", href: "/admin/alumni" },
       { area: "developers", label: "Developers", href: "/admin/developers" },

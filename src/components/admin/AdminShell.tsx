@@ -24,6 +24,12 @@ export function AdminShell({ admin, nav, children }: { admin: ShellAdmin; nav: N
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [pathname]);
 
+  // The most specific matching link is the current one (Executive codes, not Members, on its page).
+  const currentHref = nav
+    .flatMap((g) => g.items.map((i) => i.href))
+    .filter((href) => isCurrent(pathname, href))
+    .sort((a, b) => b.length - a.length)[0];
+
   const sidebar = (
     <nav aria-label="Admin" className="flex h-full flex-col">
       <Link href="/admin" className="flex items-center gap-3 px-2 py-1">
@@ -39,7 +45,7 @@ export function AdminShell({ admin, nav, children }: { admin: ShellAdmin; nav: N
             <p className="px-3 text-[0.7rem] font-medium tracking-[0.14em] text-muted/80 uppercase">{group.title}</p>
             <ul className="mt-2 space-y-0.5">
               {group.items.map((item) => {
-                const current = isCurrent(pathname, item.href);
+                const current = item.href === currentHref;
                 return (
                   <li key={item.href}>
                     <Link

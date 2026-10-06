@@ -1,8 +1,11 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
+import { emailPaymentConfirmed } from "@/lib/events/emails";
 import { EVENTS_TAG } from "@/lib/events/queries";
+import { getAdminEvent } from "../data/events";
 import { eventCategories } from "@/lib/events/types";
 import { type ActionState, bool, explainDbError, failed, fieldErrors, fromDhakaInput, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
@@ -27,6 +30,9 @@ const eventSchema = z
     rsvpEnabled: z.boolean(),
     rsvpDeadline: z.string().nullable(),
     capacity: z.number().int().positive("Capacity must be at least 1.").nullable(),
+    feeAmount: z.number({ error: "Enter the fee in taka." }).int("Whole taka only.").min(0).max(100000).nullable(),
+    feeBkashNumber: z.string().regex(/^(\+?88)?01[3-9]\d{8}$/, "Enter a Bangladeshi mobile number.").nullable(),
+    feeNote: z.string().max(500, "Keep it under 500 characters.").nullable(),
     published: z.boolean(),
   })
   .refine((e) => Date.parse(e.endsAt) > Date.parse(e.startsAt), { message: "It must end after it starts.", path: ["endsAt"] });
@@ -63,6 +69,9 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     rsvpEnabled: bool(fd, "rsvpEnabled"),
     rsvpDeadline: fromDhakaInput(str(fd, "rsvpDeadline")),
     capacity: capacityRaw ? Number(capacityRaw) : null,
+    feeAmount: str(fd, "feeAmount") ? Number(str(fd, "feeAmount")) : null,
+    feeBkashNumber: optional(fd, "feeBkashNumber")?.replace(/[\s-]/g, "") ?? null,
+    feeNote: optional(fd, "feeNote"),
     published: bool(fd, "published"),
   };
   const parsed = eventSchema.safeParse(values);
@@ -85,6 +94,9 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     rsvp_enabled: e.rsvpEnabled,
     rsvp_deadline: e.rsvpDeadline,
     capacity: e.capacity,
+    fee_amount: e.feeAmount || null,
+    fee_bkash_number: e.feeBkashNumber,
+    fee_note: e.feeNote,
     published: e.published,
   };
   const res = id ? await g.db.from("events").update(row).eq("id", id).select("id").single() : await g.db.from("events").insert(row).select("id").single();
@@ -105,6 +117,36 @@ export async function cancelRegistration(previous: ActionState, fd: FormData): P
   if (error) return failed(explainDbError(error.message));
   updateTag(EVENTS_TAG);
   return ok(previous, "RSVP cancelled.");
+}
+
+/** Confirm (or undo) someone's event fee after checking the bKash statement. Confirming emails them. */
+export async function setPaid(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("events");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const paid = str(fd, "paid") === "true";
+  const { data, error } = await g.db
+    .from("event_registrations")
+    .update(
+      paid
+        ? { payment_status: "paid", paid_at: new Date().toISOString(), paid_by: g.admin.email }
+        : { payment_status: "unpaid", paid_at: null, paid_by: null },
+    )
+    .eq("id", id)
+    .neq("payment_status", "not_required")
+    .select("event_id, full_name, email, ticket_code")
+    .maybeSingle();
+  if (error) return failed(explainDbError(error.message));
+  if (!data) return failed("This RSVP doesn’t have a fee.");
+  if (paid) {
+    const event = await getAdminEvent(g.admin, data.event_id as string);
+    if (event) {
+      const to = { email: data.email as string, name: data.full_name as string };
+      after(() => emailPaymentConfirmed(event, to, data.ticket_code as string).catch((e) => console.error("Payment email failed:", e)));
+    }
+  }
+  refresh();
+  return ok(previous, paid ? "Marked paid. We’ve emailed them." : "Marked unpaid.");
 }
 
 export async function toggleCheckIn(previous: ActionState, fd: FormData): Promise<ActionState> {

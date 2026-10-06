@@ -2,8 +2,9 @@ import { Suspense } from "react";
 import { Panel, PageHeader, Stat, formatWhen, PageSkeleton } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { getDashboard } from "@/lib/admin/data/dashboard";
+import { countPendingMembers } from "@/lib/admin/data/members";
 import { getActivity } from "@/lib/admin/data/users";
-import { roleInfo } from "@/lib/admin/roles";
+import { canAccess, roleInfo } from "@/lib/admin/roles";
 
 // Signed out, the layout shows the sign-in screen instead of this page (see admin/layout.tsx).
 export const instant = false;
@@ -20,7 +21,11 @@ export default function AdminDashboard() {
 
 async function Dashboard() {
   const admin = await requireArea(() => true);
-  const [d, activity] = await Promise.all([getDashboard(admin), admin.roles.includes("master_admin") ? getActivity(admin, 8) : Promise.resolve([])]);
+  const [d, activity, pendingMembers] = await Promise.all([
+    getDashboard(admin),
+    admin.roles.includes("master_admin") ? getActivity(admin, 8) : Promise.resolve([]),
+    canAccess(admin.roles, "members") ? countPendingMembers(admin) : Promise.resolve(null),
+  ]);
 
   return (
     <>
@@ -30,6 +35,12 @@ async function Dashboard() {
       />
 
       <div className="grid gap-8">
+        {pendingMembers !== null && (
+          <Section title="Membership">
+            <Stat label="Registrations to review" value={pendingMembers} hint="Check the payment, then approve" href="/admin/members" tone={pendingMembers ? "orange" : undefined} />
+          </Section>
+        )}
+
         {d.events && (
           <Section title="Events">
             <Stat label="Upcoming events" value={d.events.upcoming} href="/admin/events" />

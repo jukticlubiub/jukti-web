@@ -17,11 +17,35 @@ export type RsvpMode = "live" | "preview" | "off";
 /** none: the event doesn't take RSVPs. closed: past the deadline. ended: the event is over. */
 export type RsvpPhase = "none" | "open" | "closed" | "ended";
 
+export type PaymentStatus = "not_required" | "unpaid" | "submitted" | "paid";
+
 export type RsvpRegistration = {
   status: "registered" | "waitlisted";
   /** Place on the waitlist, 1 = next in line. */
   position: number | null;
+  /** Their ticket, e.g. JT-7K3M9Q: scanned at the entry, and the bKash reference for a fee. */
+  ticketCode: string | null;
+  payment: { status: PaymentStatus; sender: string | null; txn: string | null };
 };
+
+type RegistrationRow = {
+  status: "registered" | "waitlisted";
+  position: number | null;
+  ticket_code?: string | null;
+  payment_status?: PaymentStatus;
+  payment_sender?: string | null;
+  payment_txn?: string | null;
+};
+
+export function toRegistration(row: RegistrationRow | null | undefined): RsvpRegistration | null {
+  if (!row) return null;
+  return {
+    status: row.status,
+    position: row.position,
+    ticketCode: row.ticket_code ?? null,
+    payment: { status: row.payment_status ?? "not_required", sender: row.payment_sender ?? null, txn: row.payment_txn ?? null },
+  };
+}
 
 export type RsvpViewer = { name: string; email: string; studentId: string };
 
@@ -70,9 +94,11 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  const [seats, mine, previous] = await Promise.all([
+  const [seats, mine, member, previous] = await Promise.all([
     getLiveSeats(event),
     claims ? supabase.rpc("my_event_registration", { p_event_id: event.id }) : null,
+    // Members' own name and IUB ID fill the form first.
+    claims ? supabase.from("members").select("name, iub_id").eq("id", claims.sub).maybeSingle() : null,
     // Their details from their last RSVP, so the form is filled in next time.
     claims
       ? supabase
@@ -91,11 +117,11 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
   return {
     seats,
     viewer: {
-      name: previous?.data?.full_name ?? metadata.full_name ?? metadata.name ?? "",
+      name: member?.data?.name || previous?.data?.full_name || metadata.full_name || metadata.name || "",
       email: typeof claims.email === "string" ? claims.email : "",
-      studentId: previous?.data?.student_id ?? "",
+      studentId: member?.data?.iub_id || previous?.data?.student_id || "",
     },
-    registration: (mine?.data as RsvpRegistration | null) ?? null,
+    registration: toRegistration(mine?.data as RegistrationRow | null),
   };
 }
 
@@ -108,13 +134,28 @@ const PREVIEW_COOKIE = "jukti-rsvp-preview";
 type PreviewStore = {
   viewer?: RsvpViewer;
   rsvps: Record<string, RsvpRegistration["status"]>;
+  /** Payments reported in preview, by event id. */
+  payments?: Record<string, { sender: string; txn: string | null }>;
 };
+
+/** A stable pretend ticket code per event, for preview mode. */
+function previewTicket(eventId: string) {
+  const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  let h = 0;
+  for (const c of eventId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  let code = "JT-";
+  for (let i = 0; i < 6; i++) {
+    code += alphabet[h % alphabet.length];
+    h = Math.floor(h / alphabet.length) + 7919 * (i + 1);
+  }
+  return code;
+}
 
 async function readPreview(): Promise<PreviewStore> {
   const raw = (await cookies()).get(PREVIEW_COOKIE)?.value;
   try {
     const parsed = raw ? (JSON.parse(raw) as PreviewStore) : null;
-    return { viewer: parsed?.viewer, rsvps: parsed?.rsvps ?? {} };
+    return { viewer: parsed?.viewer, rsvps: parsed?.rsvps ?? {}, payments: parsed?.payments ?? {} };
   } catch {
     return { rsvps: {} };
   }
@@ -145,7 +186,16 @@ async function previewState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" 
     seats: previewSeats(event, status),
     viewer: store.viewer ?? { name: "", email: "", studentId: "" },
     registration: status
-      ? { status, position: status === "waitlisted" ? event.rsvp.waitlisted + 1 : null }
+      ? {
+          status,
+          position: status === "waitlisted" ? event.rsvp.waitlisted + 1 : null,
+          ticketCode: previewTicket(event.id),
+          payment: event.fee
+            ? store.payments?.[event.id]
+              ? { status: "submitted", sender: store.payments[event.id].sender, txn: store.payments[event.id].txn }
+              : { status: "unpaid", sender: null, txn: null }
+            : { status: "not_required", sender: null, txn: null },
+        }
       : null,
   };
 }
@@ -155,6 +205,11 @@ export async function previewRegister(event: JuktiEvent, viewer: RsvpViewer) {
   const { capacity, registered } = event.rsvp;
   const status = store.rsvps[event.id] ?? (capacity !== null && registered >= capacity ? "waitlisted" : "registered");
   await writePreview({ viewer, rsvps: { ...store.rsvps, [event.id]: status } });
+}
+
+export async function previewPay(event: JuktiEvent, payment: { sender: string; txn: string | null }) {
+  const store = await readPreview();
+  await writePreview({ ...store, payments: { ...store.payments, [event.id]: payment } });
 }
 
 export async function previewCancel(event: JuktiEvent) {

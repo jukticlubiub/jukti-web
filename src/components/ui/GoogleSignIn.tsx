@@ -2,11 +2,12 @@ import { signInWithGoogle } from "@/lib/auth/actions";
 import { cn } from "@/lib/cn";
 import { GoogleIcon } from "./icons";
 
-/** "Continue with Google": signs in, then comes back to `next` (a path on this site). */
-export function GoogleSignIn({ next, className }: { next: string; className?: string }) {
+/** "Continue with Google": signs in, then comes back to `next` (a path on this site). `iub` offers IUB accounts first. */
+export function GoogleSignIn({ next, className, iub = false, label = "Continue with Google" }: { next: string; className?: string; iub?: boolean; label?: string }) {
   return (
     <form action={signInWithGoogle} className={className}>
       <input type="hidden" name="next" value={next} />
+      {iub && <input type="hidden" name="hd" value="iub.edu.bd" />}
       <button
         type="submit"
         className={cn(
@@ -14,7 +15,7 @@ export function GoogleSignIn({ next, className }: { next: string; className?: st
         )}
       >
         <GoogleIcon />
-        Continue with Google
+        {label}
       </button>
     </form>
   );

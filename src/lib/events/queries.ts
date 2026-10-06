@@ -25,13 +25,16 @@ type EventRow = {
   rsvp_enabled: boolean;
   rsvp_deadline: string | null;
   capacity: number | null;
+  fee_amount: number | null;
+  fee_bkash_number: string | null;
+  fee_note: string | null;
   event_photos: { count: number }[];
 };
 
 type CountRow = { event_id: string; registered: number; waitlisted: number };
 
 const EVENT_COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
 
 function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
   const category = (eventCategories as readonly string[]).includes(row.category)
@@ -57,6 +60,7 @@ function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
       registered: counts?.registered ?? 0,
       waitlisted: counts?.waitlisted ?? 0,
     },
+    fee: row.fee_amount && row.fee_amount > 0 ? { amount: row.fee_amount, bkashNumber: row.fee_bkash_number, note: row.fee_note } : null,
     photoCount: row.event_photos[0]?.count ?? 0,
   };
 }

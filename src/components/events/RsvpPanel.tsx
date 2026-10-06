@@ -5,14 +5,16 @@ import { useActionState, useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { signOut } from "@/lib/auth/actions";
 import { rsvpAction, type RsvpField, type RsvpFormState } from "@/lib/events/actions";
-import type { RsvpState } from "@/lib/events/rsvp";
+import type { RsvpRegistration, RsvpState } from "@/lib/events/rsvp";
+import type { EventFee } from "@/lib/events/types";
+import { bkashNumber as clubBkash } from "@/lib/members/options";
 import { formatDay, formatTime } from "@/lib/events/time";
 import { AddToCalendar } from "./AddToCalendar";
 import { GoogleSignIn } from "@/components/ui/GoogleSignIn";
 import { CheckIcon, ClockIcon } from "@/components/ui/icons";
 import { SeatsMeter } from "./SeatsMeter";
 
-type PanelEvent = { id: string; slug: string; title: string; startsAt: string; hasPhotos: boolean };
+type PanelEvent = { id: string; slug: string; title: string; startsAt: string; hasPhotos: boolean; fee: EventFee | null };
 
 type View = "none" | "ended" | "closed" | "off" | "signed-out" | "form" | "registered" | "waitlisted";
 
@@ -51,6 +53,7 @@ const announcements: Record<NonNullable<RsvpFormState["done"]>, string> = {
   registered: "You're registered. See you there!",
   waitlisted: "You're on the waitlist. We'll move you up if a seat frees up.",
   cancelled: "Your RSVP is cancelled.",
+  paid: "Thanks! We'll confirm your payment soon.",
 };
 
 /**
@@ -183,7 +186,7 @@ export function RsvpPanel({
                     error={result.fieldErrors?.name}
                   />
                   <Field
-                    label="IUB student ID"
+                    label="IUB student ID (leave empty if you’re not at IUB)"
                     name="studentId"
                     inputMode="numeric"
                     maxLength={7}
@@ -200,6 +203,12 @@ export function RsvpPanel({
                       defaultValue={result.values?.email ?? state.viewer.email}
                       error={result.fieldErrors?.email}
                     />
+                  )}
+                  {event.fee && (
+                    <p className="rounded-[12px] border border-flare/30 bg-lava/10 px-4 py-3 text-[0.92rem] leading-relaxed text-body">
+                      Registration fee: <strong className="text-fg">৳{event.fee.amount}</strong>, paid by bKash after you register (we’ll show you how).
+                      {event.fee.note ? ` ${event.fee.note}` : ""}
+                    </p>
                   )}
                   {result.error && <ErrorText>{result.error}</ErrorText>}
                   <button type="submit" name="intent" value="rsvp" disabled={pending} className="btn-pill btn-primary mt-1 w-full disabled:opacity-70">
@@ -218,8 +227,25 @@ export function RsvpPanel({
                   position={state.registration.position}
                   name={state.viewer?.name}
                   studentId={state.viewer?.studentId}
+                  ticketCode={state.registration.ticketCode}
+                  payment={state.registration.payment.status}
                   celebrate={result.done === "registered" || result.done === "waitlisted"}
                 />
+                {view === "registered" && event.fee && state.registration.payment.status !== "not_required" && (
+                  <Payment
+                    eventId={event.id}
+                    fee={event.fee}
+                    registration={state.registration}
+                    action={formAction}
+                    pending={pending}
+                    values={result.values}
+                    errors={result.fieldErrors}
+                    justPaid={result.done === "paid"}
+                  />
+                )}
+                {(result.done === "registered" || result.done === "waitlisted") && state.mode === "live" && (
+                  <p className="mt-4 text-[0.88rem] text-muted">We’ve emailed your ticket to {state.viewer?.email}.</p>
+                )}
                 {view === "waitlisted" && (
                   <p className="mt-4 text-[0.95rem] leading-relaxed text-body">
                     If someone cancels before the event, the next person in line gets their seat automatically.
@@ -330,6 +356,8 @@ function Ticket({
   position,
   name,
   studentId,
+  ticketCode,
+  payment,
   celebrate,
 }: {
   title: string;
@@ -338,9 +366,13 @@ function Ticket({
   position: number | null;
   name?: string;
   studentId?: string;
+  ticketCode: string | null;
+  payment: RsvpRegistration["payment"]["status"];
   celebrate: boolean;
 }) {
   const registered = status === "registered";
+  // The QR only works at the entry once the seat is confirmed and any fee paid.
+  const usable = registered && (payment === "not_required" || payment === "paid");
   return (
     <motion.div
       initial={celebrate ? { scale: 0.94, opacity: 0 } : false}
@@ -380,6 +412,24 @@ function Ticket({
         <TicketItem label="Date" value={formatDay(startsAt)} />
         <TicketItem label="Time" value={formatTime(startsAt)} />
       </dl>
+
+      {ticketCode && (
+        <div className="mt-5 flex items-center gap-4 rounded-[12px] bg-black/25 p-3">
+          {usable ? (
+            // eslint-disable-next-line @next/next/no-img-element -- generated per ticket by /tickets/[code]/qr.png
+            <img src={`/tickets/${ticketCode}/qr.png`} alt={`QR code for ticket ${ticketCode}`} width={112} height={112} className="size-28 shrink-0 rounded-[10px] bg-white p-1.5" />
+          ) : (
+            <span className="grid size-28 shrink-0 place-items-center rounded-[10px] border border-dashed border-white/25 p-2 text-center text-[0.75rem] text-muted">
+              {registered ? "QR code after payment" : "QR code once you get a seat"}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="text-[0.75rem] tracking-[0.12em] text-muted uppercase">Ticket</p>
+            <p className="mt-1 font-mono text-[1.25rem] tracking-[0.12em] text-fg">{ticketCode}</p>
+            <p className="mt-1 text-[0.82rem] leading-snug text-muted">{usable ? "Show this at the entry." : "Keep this code: it’s also emailed to you."}</p>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -392,3 +442,64 @@ function TicketItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+/** A paid event: how to pay (the ticket code is the bKash reference), then report it. */
+function Payment({
+  eventId,
+  fee,
+  registration,
+  action,
+  pending,
+  values,
+  errors,
+  justPaid,
+}: {
+  eventId: string;
+  fee: EventFee;
+  registration: RsvpRegistration;
+  action: (formData: FormData) => void;
+  pending: boolean;
+  values?: RsvpFormState["values"];
+  errors?: RsvpFormState["fieldErrors"];
+  justPaid: boolean;
+}) {
+  const { status, sender, txn } = registration.payment;
+  const payTo = fee.bkashNumber || clubBkash;
+
+  if (status === "paid") {
+    return (
+      <p className="mt-4 flex items-center gap-2 rounded-[12px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-[0.95rem] text-emerald-200">
+        <CheckIcon className="size-4" /> Fee paid (৳{fee.amount}). You’re all set.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-3 rounded-[14px] border border-flare/30 bg-lava/10 p-4">
+      <p className="text-[0.78rem] font-medium tracking-[0.18em] text-flare uppercase">Registration fee: ৳{fee.amount}</p>
+      {status === "submitted" ? (
+        <p className="text-[0.95rem] leading-relaxed text-body">
+          {justPaid ? "Thanks! " : ""}We’re checking your payment from <span className="text-fg tabular-nums">{sender}</span>
+          {txn ? ` (${txn})` : ""}. We’ll email you when it’s confirmed, and your ticket will work at the entry.
+        </p>
+      ) : (
+        <>
+          <p className="text-[0.95rem] leading-relaxed text-body">
+            Send <strong className="text-fg">৳{fee.amount}</strong> by bKash to <strong className="text-fg tabular-nums">{payTo}</strong> (personal) with your ticket
+            code <strong className="font-mono text-fg">{registration.ticketCode}</strong> as the reference. Then tell us the number you paid from.
+          </p>
+          {fee.note && <p className="text-[0.88rem] text-muted">{fee.note}</p>}
+          <form action={action} noValidate className="grid gap-3 sm:grid-cols-2">
+            <input type="hidden" name="eventId" value={eventId} />
+            <Field label="bKash number you paid from" name="sender" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" defaultValue={values?.sender ?? ""} error={errors?.sender} />
+            <Field label="Transaction ID (optional)" name="txn" placeholder="e.g. 9A7B6C5D4E" defaultValue={values?.txn ?? ""} error={errors?.txn} />
+            <button type="submit" name="intent" value="pay" disabled={pending} className="btn-pill btn-primary disabled:opacity-70 sm:col-span-2">
+              {pending ? "Sending…" : "I’ve paid"}
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  );
+}
+

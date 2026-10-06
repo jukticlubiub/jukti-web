@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import { AlumniNetwork } from "@/components/team/AlumniNetwork";
+import { MembersList } from "@/components/team/MembersList";
 import { TeamBackdrop } from "@/components/team/TeamBackdrop";
 import { TeamCarousel } from "@/components/team/TeamCarousel";
 import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import { getAlumni, getTeam } from "@/lib/content/queries";
+import { getPublicMembers } from "@/lib/members/public";
 
 export const metadata: Metadata = {
   title: "Team Jukti",
-  description: "Meet the minds behind JUKTI: the faculty advisors, executive panel and alumni of the Club of CSE, IUB.",
+  description: "Meet the minds behind JUKTI: the faculty advisors, executive panel, members and alumni of the Club of CSE, IUB.",
 };
 
 export default async function TeamPage() {
-  const [{ members, boardTerm }, alumni] = await Promise.all([getTeam(), getAlumni()]);
+  const [{ members, boardTerm }, alumni, clubMembers] = await Promise.all([getTeam(), getAlumni(), getPublicMembers()]);
   return (
     <>
       {/* Clip sideways only: the lava glow behind the portraits may spill down into the alumni section. */}
@@ -45,6 +47,7 @@ export default async function TeamPage() {
         </Reveal>
       </section>
 
+      <MembersList members={clubMembers} />
       <AlumniNetwork alumni={alumni} />
     </>
   );
