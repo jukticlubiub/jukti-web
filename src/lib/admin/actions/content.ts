@@ -4,6 +4,7 @@ import { updateTag } from "next/cache";
 import { z } from "zod";
 import { DEVELOPERS_TAG, SETTINGS_TAG, STORY_TAG, TEAM_TAG } from "@/lib/content/queries";
 import { parseLinks } from "@/lib/profile-links";
+import { keepImageOr } from "../remote-image";
 import { type ActionState, explainDbError, failed, fieldErrors, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
 import type { AdminArea } from "../roles";
@@ -107,7 +108,9 @@ export async function saveTeamMember(previous: ActionState, fd: FormData): Promi
   const parsed = memberSchema.safeParse({ kind: str(fd, "kind"), name: str(fd, "name"), role: str(fd, "role"), photoUrl: optional(fd, "photoUrl"), linkedin: optional(fd, "linkedin") });
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const m = parsed.data;
-  const row = { kind: m.kind, name: m.name, role: m.role, photo_url: m.photoUrl, linkedin: m.linkedin };
+  const photo = await keepImageOr(g.db, m.photoUrl, "team");
+  if ("error" in photo) return failed(photo.error, { photoUrl: photo.error });
+  const row = { kind: m.kind, name: m.name, role: m.role, photo_url: photo.url, linkedin: m.linkedin };
   const { error } = id
     ? await g.db.from("team_members").update(row).eq("id", id)
     : await g.db.from("team_members").insert({ ...row, position: await nextPosition(g.db, "team_members", m.kind) });
@@ -139,8 +142,10 @@ export async function saveAlumnus(previous: ActionState, fd: FormData): Promise<
   if (!parsed.success || Object.keys(errors).length) return failed("Check the highlighted fields.", errors);
   const a = parsed.data;
   const kind = str(fd, "kind") === "former_advisor" ? "former_advisor" : "alumnus";
+  const photo = await keepImageOr(g.db, a.photoUrl, "alumni");
+  if ("error" in photo) return failed(photo.error, { photoUrl: photo.error });
   // The old single LinkedIn field now lives in `links`.
-  const row = { name: a.name, role: a.role, term: a.term, photo_url: a.photoUrl, email: a.email?.toLowerCase() ?? null, links, linkedin: null };
+  const row = { name: a.name, role: a.role, term: a.term, photo_url: photo.url, email: a.email?.toLowerCase() ?? null, links, linkedin: null };
   const { error } = id
     ? await g.db.from("alumni").update(row).eq("id", id)
     : await g.db.from("alumni").insert({ ...row, kind, position: await nextPosition(g.db, "alumni", kind) });
@@ -195,8 +200,10 @@ export async function saveChapter(previous: ActionState, fd: FormData): Promise<
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const c = parsed.data;
   if (c.photoUrl && !c.photoAlt) return failed("Describe the photo.", { photoAlt: "Describe the photo." });
+  const photo = await keepImageOr(g.db, c.photoUrl, "story");
+  if ("error" in photo) return failed(photo.error, { photoUrl: photo.error });
   const row = {
-    slug: c.slug, kicker: c.kicker, title: c.title, body: c.body, badge: c.badge, photo_hint: c.photoHint, photo_url: c.photoUrl, photo_alt: c.photoAlt, link_href: c.linkHref, link_label: c.linkLabel,
+    slug: c.slug, kicker: c.kicker, title: c.title, body: c.body, badge: c.badge, photo_hint: c.photoHint, photo_url: photo.url, photo_alt: c.photoAlt, link_href: c.linkHref, link_label: c.linkLabel,
   };
   const { error } = id ? await g.db.from("story_chapters").update(row).eq("id", id) : await g.db.from("story_chapters").insert({ ...row, position: await nextPosition(g.db, "story_chapters") });
   if (error) return failed(error.message.includes("duplicate key") ? "Another chapter uses that id." : explainDbError(error.message));
@@ -219,7 +226,9 @@ export async function saveDeveloper(previous: ActionState, fd: FormData): Promis
     const valid = k === "email" ? z.email().safeParse(v).success : z.url().safeParse(v).success;
     if (!valid) return failed(`Check the ${k} link.`, { [`social_${k}`]: k === "email" ? "Enter an email address." : "Enter a full link, starting with https://" });
   }
-  const row = { name, role: str(fd, "role"), designation: str(fd, "designation"), photo_url: optional(fd, "photoUrl"), socials };
+  const photo = await keepImageOr(g.db, optional(fd, "photoUrl"), "developers");
+  if ("error" in photo) return failed(photo.error, { photoUrl: photo.error });
+  const row = { name, role: str(fd, "role"), designation: str(fd, "designation"), photo_url: photo.url, socials };
   const { error } = id ? await g.db.from("developers").update(row).eq("id", id) : await g.db.from("developers").insert({ ...row, position: await nextPosition(g.db, "developers") });
   if (error) return failed(explainDbError(error.message));
   updateTag(DEVELOPERS_TAG);

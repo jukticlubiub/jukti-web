@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { AlumniNetwork } from "@/components/team/AlumniNetwork";
 import { FormerAdvisors } from "@/components/team/FormerAdvisors";
 import { MembersList } from "@/components/team/MembersList";
@@ -8,10 +9,12 @@ import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import { getAlumni, getTeam } from "@/lib/content/queries";
 import { getPublicMembers } from "@/lib/members/public";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Team Jukti",
-  description: "Meet the minds behind JUKTI: the faculty advisors and executive board, former faculty advisors, alumni and members of the Club of CSE, IUB.",
-};
+  description:
+    "Meet the minds behind JUKTI: the faculty advisors and executive board, former faculty advisors, alumni and members of the Club of CSE, IUB.",
+  path: "/team",
+});
 
 export default async function TeamPage() {
   const [{ members, boardTerm }, alumni, clubMembers] = await Promise.all([getTeam(), getAlumni(), getPublicMembers()]);

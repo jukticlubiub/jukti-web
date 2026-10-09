@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
 import { FeaturedLog } from "@/components/logs/FeaturedLog";
@@ -10,10 +11,8 @@ import { toLogCard } from "@/lib/logs/text";
 import { joinLink } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Jukti Logs",
-  description:
-    "Tutorials, event recaps, career advice and stories from JUKTI, the Club of CSE at IUB, written by the people in it.",
-  alternates: { types: { "application/rss+xml": [{ url: "/logs/feed.xml", title: "Jukti Logs" }] } },
+  ...pageMetadata({ title: "Jukti Logs", description: "Tutorials, event recaps, career advice and stories from JUKTI, the Club of CSE at IUB, written by the people in it.", path: "/logs" }),
+  alternates: { canonical: "/logs", types: { "application/rss+xml": [{ url: "/logs/feed.xml", title: "Jukti Logs" }] } },
 };
 
 export default async function LogsPage() {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
@@ -14,10 +15,12 @@ import { getAccount } from "@/lib/members/account";
 import { requestTime } from "@/lib/events/now";
 import { currentSemester, intakeLabel } from "@/lib/members/semester";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Join JUKTI",
-  description: "Become a member of JUKTI, the Club of CSE at IUB: sign in with your IUB Google account and register.",
-};
+  description:
+    "Become a member of JUKTI, the Club of CSE at IUB: sign in with your IUB Google account and register.",
+  path: "/join",
+});
 
 const steps = [
   ["Sign in", "With your IUB Google account (your student ID @iub.edu.bd)."],

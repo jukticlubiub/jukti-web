@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -33,20 +34,25 @@ export async function generateMetadata({ params }: PageProps<"/logs/[slug]">): P
   const { slug } = await params;
   const log = await getLog(slug);
   if (!log) return { title: "Log not found" };
-  return {
+  const path = logPath(log.slug);
+  const base = pageMetadata({
     title: log.title,
     description: log.excerpt,
+    path,
+    type: "article",
+    image: log.cover ? { url: log.cover.url, alt: log.cover.alt } : undefined,
+  });
+  return {
+    ...base,
     authors: [{ name: log.author.name }],
-    alternates: { types: { "application/rss+xml": [{ url: "/logs/feed.xml", title: "Jukti Logs" }] } },
+    alternates: { canonical: path, types: { "application/rss+xml": [{ url: "/logs/feed.xml", title: "Jukti Logs" }] } },
     openGraph: {
+      ...base.openGraph,
       type: "article",
-      title: log.title,
-      description: log.excerpt,
       publishedTime: log.publishedAt,
       modifiedTime: log.updatedAt,
       authors: [log.author.name],
       section: logCategoryLabels[log.category],
-      images: log.cover ? [{ url: log.cover.url, alt: log.cover.alt }] : undefined,
     },
   };
 }

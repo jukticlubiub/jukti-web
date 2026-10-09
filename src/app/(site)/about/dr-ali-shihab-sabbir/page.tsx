@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -12,12 +13,13 @@ import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import { getMemorial } from "@/lib/content/queries";
 import { sabbir, selectedWorks, sources, studentProjects } from "@/lib/data/sabbir";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "In Memory of Dr. Ali Shihab Sabbir",
   description:
     "Remembering Professor Dr. Ali Shihab Sabbir (died 22 July 2020): teacher, researcher, former Dean at IUB, and the visionary who gave JUKTI its idea and its name.",
-  openGraph: { images: [{ url: sabbir.portrait.src, alt: sabbir.portrait.alt }] },
-};
+  path: "/about/dr-ali-shihab-sabbir",
+  image: { url: sabbir.portrait.src, alt: sabbir.portrait.alt },
+});
 
 const container = "relative mx-auto max-w-[76rem] px-5 lg:px-[clamp(2rem,4vw,5rem)]";
 const eyebrow = "flex items-center gap-2 text-[0.95rem] text-flare";

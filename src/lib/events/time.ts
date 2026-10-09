@@ -81,3 +81,14 @@ export function groupEvents(events: JuktiEvent[], now: number) {
   const [featured, ...next] = [...ongoing, ...upcoming];
   return { featured: featured ?? null, next, past };
 }
+
+/**
+ * A one-or-two sentence description for search results and shared links: the event's
+ * summary, else the start of its description, else what, when and where.
+ */
+export function eventSummary(event: Pick<JuktiEvent, "title" | "summary" | "description" | "startsAt" | "endsAt" | "venue">) {
+  if (event.summary.trim()) return event.summary.trim();
+  const text = event.description.replace(/\s+/g, " ").trim();
+  if (text) return text.length > 180 ? `${text.slice(0, 177).replace(/\s+\S*$/, "")}…` : text;
+  return `${event.title} by JUKTI, the Club of CSE at IUB, on ${formatDateRange(event)}${event.venue ? ` at ${event.venue}` : ""}.`;
+}

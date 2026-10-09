@@ -9,6 +9,7 @@ import { getAdminEvent } from "../data/events";
 import { eventCategories } from "@/lib/events/types";
 import { type ActionState, bool, explainDbError, failed, fieldErrors, fromDhakaInput, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
+import { keepImageOr } from "../remote-image";
 
 const isPR = (roles: string[]) => roles.includes("pr_editor") || roles.includes("master_admin");
 
@@ -78,6 +79,8 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const e = parsed.data;
   if (e.coverUrl && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
+  const cover = await keepImageOr(g.db, e.coverUrl, "events");
+  if ("error" in cover) return failed(cover.error, { coverUrl: cover.error });
 
   const row = {
     title: e.title,
@@ -88,7 +91,7 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     starts_at: e.startsAt,
     ends_at: e.endsAt,
     venue: e.venue,
-    cover_url: e.coverUrl,
+    cover_url: cover.url,
     cover_alt: e.coverAlt,
     agenda: e.agenda,
     rsvp_enabled: e.rsvpEnabled,
@@ -153,6 +156,8 @@ export async function savePastEvent(previous: ActionState, fd: FormData): Promis
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const e = parsed.data;
   if (e.coverUrl && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
+  const cover = await keepImageOr(g.db, e.coverUrl, "events");
+  if ("error" in cover) return failed(cover.error, { coverUrl: cover.error });
 
   const row = {
     title: e.title,
@@ -163,7 +168,7 @@ export async function savePastEvent(previous: ActionState, fd: FormData): Promis
     starts_at: e.startsAt,
     ends_at: e.endsAt,
     venue: e.venue,
-    cover_url: e.coverUrl,
+    cover_url: cover.url,
     cover_alt: e.coverAlt,
     recap: e.recap || null,
     rsvp_enabled: false,

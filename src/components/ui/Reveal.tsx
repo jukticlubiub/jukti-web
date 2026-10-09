@@ -41,7 +41,8 @@ export function MaskReveal({ children, className }: { children: React.ReactNode;
   const mask = useRef<HTMLSpanElement>(null);
   const inView = useInView(mask, { once: true, margin: "0px 0px -10% 0px" });
   return (
-    <span ref={mask} className={`block overflow-hidden pb-[0.08em] ${className ?? ""}`}>
+    // Clips only top and bottom, so the display font's last letter isn't shaved off at the side.
+    <span ref={mask} className={`block overflow-y-clip pb-[0.08em] ${className ?? ""}`}>
       <motion.span
         className="block"
         initial={{ y: "105%" }}

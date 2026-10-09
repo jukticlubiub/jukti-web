@@ -14,10 +14,14 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const reveal = [0.16, 1, 0.3, 1] as const;
 
-/** A line of the title that slides up from behind a mask. */
+/**
+ * A line of the title that slides up from behind a mask. The mask clips only top and bottom:
+ * the display font's last letter draws a little past its box (tight tracking and the
+ * outline stroke), and clipping sideways would shave it off.
+ */
 function TitleLine({ children, delay, className }: { children: React.ReactNode; delay: number; className?: string }) {
   return (
-    <span className={`block overflow-hidden pt-[0.04em] pb-[0.08em] ${className ?? ""}`}>
+    <span className={`block overflow-y-clip pt-[0.04em] pb-[0.08em] ${className ?? ""}`}>
       <motion.span
         className="block"
         initial={{ y: "110%" }}

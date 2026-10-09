@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AskPanel } from "@/components/helpline/AskPanel";
@@ -11,11 +12,12 @@ import { Reveal } from "@/components/ui/Reveal";
 import { getQuestions } from "@/lib/helpline/queries";
 import { getHelplineViewer } from "@/lib/helpline/viewer";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Academic Helpline",
   description:
     "Ask your course questions and doubts. JUKTI seniors and the CSE faculty at IUB answer them on the Academic Helpline.",
-};
+  path: "/helpline",
+});
 
 const steps = [
   ["Ask", "Sign in with Google and post your question. You can hide your name."],

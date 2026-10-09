@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
@@ -12,11 +13,12 @@ import { getEvents } from "@/lib/events/queries";
 import { eventStatus, eventYear, formatDateRange, groupEvents } from "@/lib/events/time";
 import { joinLink } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Our Events",
   description:
     "Workshops, programming contests, hackathons and meetups by JUKTI, the Club of CSE at IUB. RSVP for what's next and relive past events.",
-};
+  path: "/events",
+});
 
 export default function EventsPage() {
   return (

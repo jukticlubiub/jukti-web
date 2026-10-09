@@ -2,9 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element -- previews of freshly uploaded images, any host */
 import { useId, useRef, useState } from "react";
+import { importImageFromUrl } from "@/lib/admin/actions/images";
 import { type ImagePresetName, imagePresets } from "@/lib/admin/image-presets";
 import { cn } from "@/lib/cn";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
+import { supabaseEnv } from "@/lib/supabase/config";
 import { inputClass } from "./forms";
 import { type Cropped, ImageCropper } from "./ImageCropper";
 
@@ -35,6 +37,18 @@ export async function uploadBlob({ blob, width, height }: Cropped, folder: strin
   const { error } = await supabase.storage.from("media").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
   if (error) throw new Error(error.message.includes("security") ? "Your role can't upload images." : "The upload failed. Please try again.");
   return { url: supabase.storage.from("media").getPublicUrl(path).data.publicUrl, width, height };
+}
+
+const MEDIA_MARKER = "/storage/v1/object/public/media/";
+
+/** A web link to an image on another site (not our storage, not a file shipped with the site). */
+function isOutsideImage(url: string) {
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    return !supabaseEnv || new URL(url).host !== new URL(supabaseEnv.url).host;
+  } catch {
+    return false;
+  }
 }
 
 /** Resizes (without cropping) and uploads an image: for gallery photos, which keep their own shape. */
@@ -72,6 +86,35 @@ export function ImageField({
   const [error, setError] = useState<string | null>(null);
   const [previewOnly, setPreviewOnly] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // A pasted image copied into our storage, replaced by the framed version once it's cropped.
+  const imported = useRef<string | null>(null);
+  const copying = useRef<string | null>(null);
+
+  /** A link to an image on another site: copy it into our storage (other sites' links expire), then frame it. */
+  const copyIn = async (link: string) => {
+    if (!live || !isOutsideImage(link) || copying.current === link) return;
+    copying.current = link;
+    setError(null);
+    setBusy("Copying the image…");
+    const result = await importImageFromUrl(link, folder);
+    copying.current = null;
+    if ("error" in result) {
+      setBusy(null);
+      setUrl("");
+      setError(result.error);
+      return;
+    }
+    setUrl(result.url);
+    imported.current = result.url;
+    try {
+      const res = await fetch(result.url);
+      if (res.ok) setCropping(await res.blob());
+    } catch {
+      // Keep the copy as it is; it can be re-cropped later.
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const pick = (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = "";
@@ -106,6 +149,10 @@ export function ImageField({
     try {
       setUrl((await uploadBlob(result, folder)).url);
       setPreviewOnly(false);
+      // The framed version replaces the uncropped copy of a pasted image.
+      const original = imported.current;
+      imported.current = null;
+      if (original?.includes(MEDIA_MARKER)) void createBrowserSupabase().storage.from("media").remove([original.split(MEDIA_MARKER)[1]]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "The upload failed.");
     } finally {
@@ -157,7 +204,13 @@ export function ImageField({
               setUrl(e.target.value.trim());
               setPreviewOnly(false);
             }}
-            placeholder="…or paste an image URL"
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData("text").trim();
+              if (isOutsideImage(pasted)) void copyIn(pasted);
+            }}
+            onBlur={(e) => void copyIn(e.target.value.trim())}
+            disabled={busy !== null}
+            placeholder="…or paste an image URL (it’s copied to the site)"
             className={cn(inputClass, "h-10 text-[0.9rem]")}
           />
           {previewOnly && <p className="text-[0.8rem] text-sky-200">Preview mode: cropped here, but not uploaded (that needs Supabase).</p>}

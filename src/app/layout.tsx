@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "lenis/dist/lenis.css";
+import { baseOpenGraph, siteTitle } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { bodyFont, displayFont } from "./fonts";
 import "./globals.css";
@@ -7,14 +8,16 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name} · Club of CSE, IUB`,
+    default: siteTitle,
     template: `%s · ${site.name}`,
   },
   description: site.description,
-  openGraph: {
-    siteName: site.fullName,
-    type: "website",
-  },
+  applicationName: site.fullName,
+  category: "education",
+  openGraph: baseOpenGraph,
+  twitter: { card: "summary_large_image" },
+  // Google Search Console's "HTML tag" check, if the site is verified that way: set the code from the tag.
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
 
 export const viewport: Viewport = {

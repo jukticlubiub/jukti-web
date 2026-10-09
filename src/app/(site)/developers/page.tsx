@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
 import { FacebookIcon, InstagramIcon, LinkedInIcon, MailIcon } from "@/components/ui/icons";
@@ -6,10 +7,12 @@ import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import { getDevelopers } from "@/lib/content/queries";
 import { type Developer, siteCreated, stack } from "@/lib/data/developers";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Developers",
-  description: "The JUKTI members who designed and built this website.",
-};
+  description:
+    "The JUKTI members who designed and built this website.",
+  path: "/developers",
+});
 
 const created = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dhaka" }).format(
   new Date(`${siteCreated}T12:00:00+06:00`),

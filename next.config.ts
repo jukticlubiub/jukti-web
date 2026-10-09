@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   // Pages ship a prerendered shell; request-time parts (like which events are on
   // now, or a visitor's RSVP) stream in behind <Suspense>. See lib/events/queries.ts.
   cacheComponents: true,
+  // Next's development badge, out of the bottom-left corner (where the Contact us button sits).
+  devIndicators: { position: "bottom-right" },
   images: {
     // Images uploaded in the admin panel (team portraits, event covers, galleries...) live in Supabase Storage.
     remotePatterns: supabaseHost ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }] : [],

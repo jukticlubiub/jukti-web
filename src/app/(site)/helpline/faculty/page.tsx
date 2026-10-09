@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { FacultyDirectory } from "@/components/helpline/FacultyDirectory";
 import { HelplineHeader } from "@/components/helpline/HelplineHeader";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
 import { getFaculty } from "@/lib/helpline/queries";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Faculty Directory",
-  description: "Room numbers and email addresses of the CSE faculty at Independent University, Bangladesh.",
-};
+  description:
+    "Room numbers and email addresses of the CSE faculty at Independent University, Bangladesh.",
+  path: "/helpline/faculty",
+});
 
 export default async function FacultyPage() {
   const faculty = await getFaculty();

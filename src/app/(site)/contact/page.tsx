@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { CampusMapSection } from "@/components/contact/CampusMapSection";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { SocialCards } from "@/components/contact/SocialCards";
@@ -9,11 +10,12 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getSocials } from "@/lib/content/queries";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact Us",
   description:
     "Reach JUKTI, the Club of CSE at IUB, on Facebook, Instagram, LinkedIn or by email, and find us at Independent University, Bangladesh in Bashundhara, Dhaka.",
-};
+  path: "/contact",
+});
 
 export default async function ContactPage() {
   const { email } = await getSocials();

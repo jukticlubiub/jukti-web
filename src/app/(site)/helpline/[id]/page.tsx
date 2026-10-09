@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -32,11 +33,7 @@ export async function generateMetadata({ params }: PageProps<"/helpline/[id]">):
   const question = await getQuestion(id);
   if (!question) return { title: "Question not found" };
   const description = question.body.replace(/\s+/g, " ").slice(0, 160);
-  return {
-    title: question.title,
-    description,
-    openGraph: { title: question.title, description, type: "article" },
-  };
+  return pageMetadata({ title: question.title, description, path: helplinePath(question.id), type: "article" });
 }
 
 export default function QuestionPage({ params, searchParams }: PageProps<"/helpline/[id]">) {

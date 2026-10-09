@@ -7,6 +7,7 @@ import { LOGS_TAG } from "@/lib/logs/queries";
 import { logCategories } from "@/lib/logs/types";
 import { type ActionState, explainDbError, failed, fieldErrors, fromDhakaInput, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
+import { keepImageOr } from "../remote-image";
 
 const schema = z.object({
   title: z.string().min(1, "Give the log a title.").max(160),
@@ -45,6 +46,10 @@ export async function saveLog(previous: ActionState, fd: FormData): Promise<Acti
   const l = parsed.data;
   if (l.status === "published" && !l.excerpt) return failed("Add an excerpt before publishing: it’s shown on cards and in link previews.", { excerpt: "Required to publish." });
   if (l.coverUrl && !l.coverAlt) return failed("Describe the cover image.", { coverAlt: "Describe the image." });
+  const cover = await keepImageOr(g.db, l.coverUrl, "logs");
+  if ("error" in cover) return failed(cover.error, { coverUrl: cover.error });
+  const avatar = await keepImageOr(g.db, l.authorAvatarUrl, "logs/authors");
+  if ("error" in avatar) return failed(avatar.error, { authorAvatarUrl: avatar.error });
 
   const row = {
     title: l.title,
@@ -52,11 +57,11 @@ export async function saveLog(previous: ActionState, fd: FormData): Promise<Acti
     excerpt: l.excerpt,
     body: l.body,
     category: l.category,
-    cover_url: l.coverUrl,
+    cover_url: cover.url,
     cover_alt: l.coverAlt,
     author_name: l.authorName,
     author_role: l.authorRole,
-    author_avatar_url: l.authorAvatarUrl,
+    author_avatar_url: avatar.url,
     status: l.status,
     published_at: l.publishedAt,
   };

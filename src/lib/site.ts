@@ -1,10 +1,20 @@
+/**
+ * The site's public address, for links in emails, sitemaps and search results. Set
+ * NEXT_PUBLIC_SITE_URL; on Vercel it falls back to the production domain Vercel provides
+ * (the custom domain once one is connected), never to localhost.
+ */
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+  "http://localhost:3000";
+
 export const site = {
   name: "JUKTI",
   fullName: "JUKTI, Club of CSE, IUB",
   tagline: "The largest CSE Student Community at IUB",
   description:
     "JUKTI is the Club of Computer Science and Engineering at Independent University, Bangladesh. Founded in 2014 to foster innovation, creativity, and technical excellence among CSE students.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  url: siteUrl.replace(/\/+$/, ""),
   socials: {
     facebook: "https://www.facebook.com/jukti.cse.iub",
     instagram: "https://www.instagram.com/jukti.iub",

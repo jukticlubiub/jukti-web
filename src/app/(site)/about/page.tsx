@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { StoryMap } from "@/components/about/StoryMap";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
 import { getStoryChapters } from "@/lib/content/queries";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About Us",
   description:
     "The story of JUKTI, the Club of CSE at IUB: an idea on a trip to Kuakata, a name that means logic, founded in 2014, and the largest CSE community at IUB today.",
-};
+  path: "/about",
+});
 
 export default async function AboutPage() {
   const storyChapters = await getStoryChapters();

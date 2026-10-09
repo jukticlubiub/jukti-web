@@ -22,7 +22,8 @@ import { calendarFilePath, eventPath, googleCalendarUrl } from "@/lib/events/cal
 import { requestTime } from "@/lib/events/now";
 import { getEvent, getEventPhotos, getEvents } from "@/lib/events/queries";
 import { getRsvpState } from "@/lib/events/rsvp";
-import { formatDateRange, groupEvents } from "@/lib/events/time";
+import { eventSummary, formatDateRange, groupEvents } from "@/lib/events/time";
+import { pageMetadata } from "@/lib/seo";
 import { categoryLabels, type JuktiEvent } from "@/lib/events/types";
 import { site } from "@/lib/site";
 
@@ -39,16 +40,12 @@ export async function generateMetadata({ params }: PageProps<"/events/[slug]">):
   const { slug } = await params;
   const event = await getEvent(slug);
   if (!event) return { title: "Event not found" };
-  return {
+  return pageMetadata({
     title: event.title,
-    description: event.summary,
-    openGraph: {
-      title: event.title,
-      description: event.summary,
-      type: "website",
-      images: event.cover ? [{ url: event.cover.url, alt: event.cover.alt }] : undefined,
-    },
-  };
+    description: eventSummary(event),
+    path: eventPath(event.slug),
+    image: event.cover ? { url: event.cover.url, alt: event.cover.alt } : undefined,
+  });
 }
 
 export default function EventPage({ params, searchParams }: PageProps<"/events/[slug]">) {
@@ -280,7 +277,7 @@ function structuredData(event: JuktiEvent, url: string) {
     "@context": "https://schema.org",
     "@type": "Event",
     name: event.title,
-    description: event.summary,
+    description: eventSummary(event),
     startDate: event.startsAt,
     endDate: event.endsAt,
     eventStatus: "https://schema.org/EventScheduled",
@@ -291,11 +288,17 @@ function structuredData(event: JuktiEvent, url: string) {
       ? { "@type": "VirtualLocation", url }
       : {
           "@type": "Place",
-          name: event.venue,
-          address: "Independent University, Bangladesh, Bashundhara R/A, Dhaka",
+          name: event.venue || site.campus.name,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: `${site.campus.address[0]}, ${site.campus.address[1].split(",")[0]}`,
+            addressLocality: "Dhaka",
+            postalCode: "1229",
+            addressCountry: "BD",
+          },
         },
-    image: event.cover ? [event.cover.url] : undefined,
+    image: [event.cover?.url ?? `${site.url}/opengraph-image`],
     url,
-    organizer: { "@type": "Organization", name: site.fullName, url: site.url },
+    organizer: { "@type": "Organization", name: site.fullName, url: site.url, logo: `${site.url}/brand/jukti-logo-512.png` },
   };
 }
