@@ -3,6 +3,8 @@
 import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { useHasWebGL } from "@/components/ui/useHasWebGL";
+import { useIdle } from "@/components/ui/useIdle";
 import { createBrain, type JuroBrain, type JuroMode } from "./brain";
 import { peekDistance } from "./peek";
 
@@ -334,6 +336,13 @@ function glide(from: Box, to: Box, k: number): Box {
  * ducking out. Hover makes him happy; click to wave.
  */
 export function Juro() {
+  // He's drawn in WebGL: only on a graphics card, and once the page has loaded.
+  const webgl = useHasWebGL();
+  const idle = useIdle();
+  return webgl && idle ? <JuroOnPage /> : null;
+}
+
+function JuroOnPage() {
   const brain = useRef<JuroBrain>(createBrain());
   const container = useRef<HTMLDivElement>(null);
   const rig = useRef<Rig>({

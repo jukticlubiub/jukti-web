@@ -3,7 +3,6 @@
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { motion } from "motion/react";
 import { useRef } from "react";
 import { peekDistance } from "@/components/juro/peek";
 import { PillButton } from "@/components/ui/PillButton";
@@ -12,24 +11,18 @@ import { HeroBackdrop } from "./HeroBackdrop";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const reveal = [0.16, 1, 0.3, 1] as const;
-
 /**
  * A line of the title that slides up from behind a mask. The mask clips only top and bottom:
  * the display font's last letter draws a little past its box (tight tracking and the
- * outline stroke), and clipping sideways would shave it off.
+ * outline stroke), and clipping sideways would shave it off. A CSS animation, so it plays
+ * from the first paint instead of waiting for the page's JavaScript.
  */
 function TitleLine({ children, delay, className }: { children: React.ReactNode; delay: number; className?: string }) {
   return (
     <span className={`block overflow-y-clip pt-[0.04em] pb-[0.08em] ${className ?? ""}`}>
-      <motion.span
-        className="block"
-        initial={{ y: "110%" }}
-        animate={{ y: 0 }}
-        transition={{ duration: 1.1, delay, ease: reveal }}
-      >
+      <span className="block animate-[hero-rise_1.1s_var(--ease-reveal)_both] motion-reduce:animate-none" style={{ animationDelay: `${delay}s` }}>
         {children}
-      </motion.span>
+      </span>
     </span>
   );
 }
@@ -107,25 +100,15 @@ export function Hero() {
             <TitleLine delay={0.1}>JUKTIverse</TitleLine>
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.55, ease: reveal }}
-            className="mt-[0.35em] text-[clamp(1.05rem,2.06cqw,2.5rem)] leading-tight font-light tracking-[-0.025em] text-fg"
-          >
+          <p className="mt-[0.35em] animate-[hero-fade-up_0.9s_var(--ease-reveal)_0.55s_both] text-[clamp(1.05rem,2.06cqw,2.5rem)] leading-tight font-light tracking-[-0.025em] text-fg motion-reduce:animate-none">
             {site.tagline}
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.7, ease: reveal }}
-            className="mt-[clamp(1.25rem,2.1cqw,2.5rem)] flex"
-          >
+          <div className="mt-[clamp(1.25rem,2.1cqw,2.5rem)] flex animate-[hero-fade-up_0.9s_var(--ease-reveal)_0.7s_both] motion-reduce:animate-none">
             <PillButton href="/contact" className="px-[0.95em] py-[0.42em] text-[clamp(0.95rem,1.3cqw,1.5rem)]">
               Contact us
             </PillButton>
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

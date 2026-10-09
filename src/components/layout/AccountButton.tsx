@@ -7,27 +7,37 @@ import { accountTabs } from "@/components/members/AccountHeader";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/cn";
 import { supabaseEnv } from "@/lib/supabase/config";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 type SessionUser = { name: string; avatarUrl: string | null };
 
 /**
  * Who's signed in, read in the browser from the session cookie (no request), so the
- * header stays cached for everyone. Null while unknown or signed out.
+ * header stays cached for everyone. Null while unknown or signed out. The Supabase client
+ * is loaded only here, after the page is up, so it isn't part of every page's first download.
  */
 export function useSessionUser() {
   const [user, setUser] = useState<SessionUser | null>(null);
   useEffect(() => {
     if (!supabaseEnv) return;
-    const supabase = createBrowserSupabase();
+    let stop = false;
+    let unsubscribe = () => {};
     const read = (u: { email?: string; user_metadata?: Record<string, unknown> } | null | undefined) => {
+      if (stop) return;
       if (!u) return setUser(null);
       const meta = (u.user_metadata ?? {}) as { full_name?: string; name?: string; avatar_url?: string; picture?: string };
       setUser({ name: meta.full_name || meta.name || (u.email ?? "").split("@")[0], avatarUrl: meta.avatar_url || meta.picture || null });
     };
-    supabase.auth.getSession().then(({ data }) => read(data.session?.user));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => read(session?.user));
-    return () => data.subscription.unsubscribe();
+    void import("@/lib/supabase/browser").then(({ createBrowserSupabase }) => {
+      if (stop) return;
+      const supabase = createBrowserSupabase();
+      supabase.auth.getSession().then(({ data }) => read(data.session?.user));
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => read(session?.user));
+      unsubscribe = () => data.subscription.unsubscribe();
+    });
+    return () => {
+      stop = true;
+      unsubscribe();
+    };
   }, []);
   return user;
 }

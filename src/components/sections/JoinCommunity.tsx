@@ -99,12 +99,17 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
   const chips = members.slice(0, CHIP_SPOTS.length);
   const chipCount = chips.length;
 
+  // Whether the rings are on screen: the balls and the chips only move while they are.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const visible = useRef(true);
+
   // Which chips are open, oldest first; one closes and another opens every CYCLE_MS.
   const [openOrder, setOpenOrder] = useState<number[]>([0, 2, 4]);
   const [hovered, setHovered] = useState<number | null>(null);
   useEffect(() => {
     if (reduceMotion || chipCount <= OPEN_AT_ONCE) return;
     const id = setInterval(() => {
+      if (!visible.current) return;
       const pick = Math.random();
       setOpenOrder((current) => {
         const closed = Array.from({ length: chipCount }, (_, i) => i).filter((i) => !current.includes(i));
@@ -117,8 +122,6 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
 
   // Glowing balls move along their rings; positions are written straight to the SVG.
   const ballRefs = useRef<(SVGGElement | null)[]>([]);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const visible = useRef(true);
   const elapsed = useRef(0);
   useEffect(() => {
     const stage = stageRef.current;

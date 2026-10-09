@@ -298,6 +298,20 @@
   animation: lava-drift var(--d, 26s) ease-in-out var(--delay, 0s) infinite alternate;
 }
 
+/* The home hero's entrance (Hero.tsx): CSS, so it plays from the first paint. */
+@keyframes hero-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
 /* The admin panel's loading bar: a short bar sliding across the top (see AdminShell). */
 @keyframes admin-nav-progress {
   0% {
