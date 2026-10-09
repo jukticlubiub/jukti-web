@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- admin thumbnails from any host */
 import { useState } from "react";
-import { moveRow, saveAlumnus, saveBoardTerm, saveChapter, saveDeveloper, saveMemorial, saveSocials, saveTeamMember, setShown } from "@/lib/admin/actions/content";
+import { deleteRow, moveRow, saveAlumnus, saveBoardTerm, saveChapter, saveDeveloper, saveMemorial, saveSocials, saveTeamMember, setShown } from "@/lib/admin/actions/content";
 import { imagePresets } from "@/lib/admin/image-presets";
 import type { AdminAlumnus, AdminChapter, AdminDeveloper, AdminTeamMember } from "@/lib/admin/data/content";
 import type { MemorialContent, Socials } from "@/lib/content/queries";
@@ -23,6 +23,7 @@ export function EditableItem({
   shown,
   first,
   last,
+  deletable = false,
   children,
 }: {
   table: "team_members" | "alumni" | "story_chapters" | "developers";
@@ -34,6 +35,8 @@ export function EditableItem({
   shown: boolean;
   first: boolean;
   last: boolean;
+  /** Offer "Delete" (for good, after a confirmation) next to Hide. */
+  deletable?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -55,6 +58,15 @@ export function EditableItem({
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="h-8 rounded-full border border-glass-border px-3 text-[0.8rem] text-body hover:text-fg">
             {open ? "Close" : "Edit"}
           </button>
+          {deletable && (
+            <ActionButton
+              action={deleteRow}
+              fields={{ table, id }}
+              label="Delete"
+              tone="danger"
+              confirm={`Delete ${title} for good? This can’t be undone.`}
+            />
+          )}
         </div>
       </div>
       {open && <div className="border-t border-glass-border p-4">{children}</div>}
@@ -101,10 +113,25 @@ export function AlumnusForm({ alumnus, live, kind = alumnus?.kind ?? "alumnus" }
           <input type="hidden" name="kind" value={kind} />
           <div className="grid gap-4 md:grid-cols-3">
             <TextField label="Name" name="name" state={state} defaultValue={alumnus?.name} placeholder={advisor ? "e.g. Dr. A. B. Rahman" : undefined} />
-            <TextField label="Role" name="role" state={state} defaultValue={alumnus?.role ?? (advisor ? "Faculty Advisor" : "Executive")} />
-            <TextField label={advisor ? "Years" : "Term"} name="term" state={state} defaultValue={alumnus?.term} placeholder={advisor ? "2018-2023" : "2024-25"} />
+            {advisor ? (
+              <TextField label="Designation" name="role" state={state} defaultValue={alumnus?.role} placeholder="e.g. Associate Professor, CSE" />
+            ) : (
+              <TextField label="Role" name="role" state={state} defaultValue={alumnus?.role ?? "Executive"} />
+            )}
+            <TextField label={advisor ? "Years as advisor" : "Term"} name="term" state={state} defaultValue={alumnus?.term} placeholder={advisor ? "2018-2023" : "2024-25"} />
           </div>
-          <TextField label="LinkedIn (optional)" name="linkedin" state={state} defaultValue={alumnus?.linkedin} />
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+            <TextField label="Email (optional, shown publicly)" name="email" type="email" state={state} defaultValue={alumnus?.email} placeholder="name@example.com" />
+            <TextArea
+              label="Links (optional, one per line)"
+              name="links"
+              rows={3}
+              state={state}
+              defaultValue={alumnus?.links.join("\n")}
+              placeholder={"https://www.linkedin.com/in/…\nhttps://www.behance.net/…\nhttps://their-website.com"}
+              hint={<span className="text-[0.78rem] text-muted">LinkedIn, website, Behance, GitHub… up to 8</span>}
+            />
+          </div>
           <ImageField label="Photo (head and shoulders)" name="photoUrl" folder="alumni" preset="alumnus" defaultUrl={alumnus?.photoUrl} live={live} />
         </>
       )}

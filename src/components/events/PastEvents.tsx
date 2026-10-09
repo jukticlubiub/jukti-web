@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { categoryLabels } from "@/lib/events/types";
 import { EventCard, type EventCardData } from "./EventCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { ChevronIcon } from "@/components/ui/icons";
 
 /** Events shown before "Show all", so the archive stays scannable as it grows. */
 const INITIAL_COUNT = 6;
@@ -97,8 +98,9 @@ export function PastEvents({ events }: { events: PastEventItem[] }) {
 
       {hiddenCount > 0 && (
         <div className="mt-[clamp(2.5rem,4vw,4rem)] flex justify-center">
-          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-ghost">
+          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-more">
             Show all {found.length} events
+            <ChevronIcon className="rotate-90" />
           </button>
         </div>
       )}

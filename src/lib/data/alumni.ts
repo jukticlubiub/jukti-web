@@ -3,8 +3,8 @@
  *
  * Each entry reads as "<role> <term>" under the name, e.g. "Executive 2024-25".
  * Photos go in public/alumni/ (a head-and-shoulders cut-out works best; it's cropped
- * to a circle and shown in black and white over the club orange). With a `linkedin`
- * URL the entry links to it.
+ * to a circle and shown in black and white over the club orange). `email` and `links`
+ * (LinkedIn, a website, Behance...) show as small icon buttons under the name.
  */
 export type Alumnus = {
   id: string;
@@ -12,7 +12,8 @@ export type Alumnus = {
   role: string;
   term: string;
   photo?: string;
-  linkedin?: string;
+  email?: string;
+  links?: string[];
   /** Former faculty advisors are listed apart from the alumni. Missing: alumnus. */
   kind?: "alumnus" | "former_advisor";
 };

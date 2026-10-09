@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import type { TeamMember } from "@/lib/data/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 
-/** Idle drift, left to right. */
+/** Idle drift, right to left: the board reads in order, from the advisors and President down. */
 const SPEED_PX_S = 45;
 /** After a drag or a sideways swipe, wait this long before drifting again. */
 const RESUME_AFTER_MS = 1800;
@@ -68,7 +68,7 @@ function LavaBand() {
 }
 
 /**
- * The team (advisors, then the executive panel) as an endless row that drifts left to right when idle.
+ * The team (advisors, then the executive panel) as an endless row that drifts right to left when idle.
  * Hovering or focusing a card eases it to a stop; the row can also be dragged,
  * flicked, or swiped sideways on a trackpad, and it picks up again once left alone.
  */
@@ -134,7 +134,7 @@ export function TeamCarousel({ people }: { people: TeamMember[] }) {
       const target = reduceMotion || s.hovering || s.focused || !idle ? 0 : SPEED_PX_S;
       s.speed += (target - s.speed) * (1 - Math.exp(-dt * 2.5));
       s.velocity *= Math.exp(-dt * 3.5);
-      s.x += (s.speed + s.velocity) * dt;
+      s.x += (s.velocity - s.speed) * dt;
     }
     s.x = wrap(s.x, s.setWidth);
     track.style.transform = `translate3d(${s.x.toFixed(2)}px, 0, 0)`;

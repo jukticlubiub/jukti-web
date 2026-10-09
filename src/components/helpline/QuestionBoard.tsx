@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { cn } from "@/lib/cn";
 import { type HelplineQuestion, type HelplineTopic, helplineTopicLabels, helplineTopics } from "@/lib/helpline/types";
 import { QuestionCard } from "./QuestionCard";
+import { ChevronIcon } from "@/components/ui/icons";
 
 /** Questions shown before "Show more". */
 const PAGE = 8;
@@ -155,9 +156,10 @@ export function QuestionBoard({ questions }: { questions: HelplineQuestion[] }) 
 
       {found.length > visible.length && (
         <div className="mt-10 flex justify-center">
-          <button type="button" onClick={() => setShown((n) => n + PAGE * 2)} className="btn-pill btn-ghost">
+          <button type="button" onClick={() => setShown((n) => n + PAGE * 2)} className="btn-pill btn-more">
             Show more questions
-            <span className="text-muted tabular-nums">({found.length - visible.length})</span>
+            <span className="tabular-nums opacity-75">({found.length - visible.length})</span>
+            <ChevronIcon className="rotate-90" />
           </button>
         </div>
       )}

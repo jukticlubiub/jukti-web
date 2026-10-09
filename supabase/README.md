@@ -27,6 +27,7 @@ the one-time setup, and how the panel's roles work.
    - `…_past_events.sql`: PR Editors can add and document events that are already over
    - `…_former_advisors.sql`: former faculty advisors, kept with the alumni
    - `…_registration_toggle.sql`: opening and closing member registration
+   - `…_alumni_contact.sql`: email and profile links for alumni and former advisors
 2. **Load the starting content**: paste `seed/faculty.sql`, then `seed/content.sql`, into
    the SQL editor. For members, see **Members** below (the import and executive codes). (`content.sql` copies the team, alumni, story chapters, developers,
    board term and social links from `src/lib/data/`. It only fills empty tables, so it's
@@ -74,8 +75,9 @@ There must always be at least one Master Admin; the last one can't be removed.
 
 ## Good to know
 
-- **Nothing is deleted from the panel** except event photos, log drafts, RSVPs (cancelled)
-  and roles. Everything else is hidden or unpublished, so it can be brought back.
+- **Nothing is deleted from the panel** except event photos, log drafts, RSVPs (cancelled),
+  roles, and alumni and former advisors (Delete, after a confirmation). Everything else is
+  hidden or unpublished, so it can be brought back.
 - **The Activity log** records every change made by an admin: who, what and when.
 - **Contact messages** are saved in the Inbox and also emailed to the club.
 - **Memories** of Dr. Sabbir appear on his page only once a PR Editor approves them.

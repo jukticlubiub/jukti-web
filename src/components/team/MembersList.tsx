@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from "react";
 import { Avatar } from "@/components/members/AccountHeader";
 import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import type { PublicMember } from "@/lib/members/public";
+import { ChevronIcon } from "@/components/ui/icons";
 
 /** Members shown before "Show all", so the section stays a section, not a phone book. */
 const INITIAL_COUNT = 24;
@@ -36,7 +37,7 @@ export function MembersList({ members }: { members: PublicMember[] }) {
   if (members.length === 0) return null;
 
   return (
-    <section aria-labelledby="members-title" className="relative px-5 pt-[clamp(3.5rem,5vw,6rem)] lg:pr-[3vw] lg:pl-[6.87vw]">
+    <section aria-labelledby="members-title" className="relative px-5 pt-[clamp(3.5rem,5vw,6rem)] pb-[clamp(5rem,9vw,10rem)] lg:pr-[3vw] lg:pl-[6.87vw]">
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 id="members-title" className="font-heading text-[clamp(1.9rem,3.6vw,4.25rem)]">
@@ -107,8 +108,9 @@ export function MembersList({ members }: { members: PublicMember[] }) {
 
       {hiddenCount > 0 && (
         <div className="mt-[clamp(2rem,3.5vw,4rem)] flex justify-center">
-          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-ghost">
+          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-more">
             Show all {found.length} members
+            <ChevronIcon className="rotate-90" />
           </button>
         </div>
       )}

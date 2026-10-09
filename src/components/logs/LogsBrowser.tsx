@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { cn } from "@/lib/cn";
 import { logCategoryLabels, logCategoryPlurals, type LogCardData, type LogCategory } from "@/lib/logs/types";
 import { LogCard } from "./LogCard";
+import { ChevronIcon } from "@/components/ui/icons";
 
 /** Logs shown before "Show all". */
 const INITIAL_COUNT = 9;
@@ -103,8 +104,9 @@ export function LogsBrowser({ logs, featuredSlug }: { logs: LogCardData[]; featu
 
       {hiddenCount > 0 && (
         <div className="mt-[clamp(2.5rem,4vw,4rem)] flex justify-center">
-          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-ghost">
+          <button type="button" onClick={() => setShowAll(true)} className="btn-pill btn-more">
             Show all {found.length} logs
+            <ChevronIcon className="rotate-90" />
           </button>
         </div>
       )}

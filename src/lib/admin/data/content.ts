@@ -7,7 +7,7 @@ import type { Admin } from "../access";
 import { adminDb } from "../guard";
 
 export type AdminTeamMember = { id: string; kind: "advisor" | "executive"; name: string; role: string; photoUrl: string | null; linkedin: string | null; position: number; active: boolean };
-export type AdminAlumnus = { id: string; name: string; role: string; term: string; photoUrl: string | null; linkedin: string | null; position: number; active: boolean; kind: "alumnus" | "former_advisor" };
+export type AdminAlumnus = { id: string; name: string; role: string; term: string; photoUrl: string | null; email: string | null; links: string[]; position: number; active: boolean; kind: "alumnus" | "former_advisor" };
 export type AdminChapter = {
   id: string; slug: string; kicker: string; title: string; body: string; badge: string; photoHint: string; photoUrl: string | null; photoAlt: string;
   linkHref: string | null; linkLabel: string | null; position: number; published: boolean;
@@ -24,11 +24,12 @@ export async function listTeamForAdmin(admin: Admin): Promise<AdminTeamMember[]>
 }
 
 export async function listAlumniForAdmin(admin: Admin): Promise<AdminAlumnus[]> {
-  if (admin.mode === "preview") return fileAlumni.map((a, i) => ({ id: a.id, name: a.name, role: a.role, term: a.term, photoUrl: a.photo ?? null, linkedin: a.linkedin ?? null, position: i, active: true, kind: a.kind ?? "alumnus" }));
-  const { data, error } = await (await adminDb()).from("alumni").select("id, name, role, term, photo_url, linkedin, position, active, kind").order("position");
+  if (admin.mode === "preview") return fileAlumni.map((a, i) => ({ id: a.id, name: a.name, role: a.role, term: a.term, photoUrl: a.photo ?? null, email: a.email ?? null, links: a.links ?? [], position: i, active: true, kind: a.kind ?? "alumnus" }));
+  const { data, error } = await (await adminDb()).from("alumni").select("id, name, role, term, photo_url, linkedin, email, links, position, active, kind").order("position");
   if (error) throw new Error(error.message);
-  return (data as { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null; position: number; active: boolean; kind: "alumnus" | "former_advisor" }[]).map((r) => ({
-    id: r.id, name: r.name, role: r.role, term: r.term, photoUrl: r.photo_url, linkedin: r.linkedin, position: r.position, active: r.active, kind: r.kind,
+  type Row = { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null; email: string | null; links: string[]; position: number; active: boolean; kind: "alumnus" | "former_advisor" };
+  return (data as Row[]).map((r) => ({
+    id: r.id, name: r.name, role: r.role, term: r.term, photoUrl: r.photo_url, email: r.email, links: [...new Set([...(r.linkedin ? [r.linkedin] : []), ...r.links])], position: r.position, active: r.active, kind: r.kind,
   }));
 }
 

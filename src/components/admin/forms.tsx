@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { ActionState } from "@/lib/admin/form";
 import { Field, FormError, inputClass } from "@/components/helpline/fields";
@@ -9,7 +9,8 @@ export { Field, FormError, inputClass };
 
 /**
  * A form for an admin server action: shows field errors, a saved message, and resets
- * after a successful "create" when `resetOnSave` is set.
+ * after a successful "create" when `resetOnSave` is set. What was typed stays put when
+ * saving fails, so a mistake can be fixed without filling the form in again.
  */
 export function AdminForm({
   action,
@@ -43,7 +44,17 @@ export function AdminForm({
   }, [state.status, state.saved]);
 
   return (
-    <form action={formAction} noValidate className={cn("grid gap-5", className)} key={resetOnSave ? state.saved ?? 0 : undefined}>
+    <form
+      noValidate
+      className={cn("grid gap-5", className)}
+      key={resetOnSave ? state.saved ?? 0 : undefined}
+      // Not `action={...}`: React clears a form after every action, failed or not.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
+        startTransition(() => formAction(data));
+      }}
+    >
       {children(state)}
       {state.status === "error" && state.message && <FormError>{state.message}</FormError>}
       <div className="flex flex-wrap items-center gap-3">

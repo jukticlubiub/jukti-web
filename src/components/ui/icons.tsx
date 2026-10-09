@@ -189,3 +189,43 @@ export const UsersIcon = (p: IconProps) => (
     <path d="M2.5 19.5a6.5 6.5 0 0 1 13 0M15.5 5.2a3.5 3.5 0 0 1 0 6.6M17.5 13.6a6.5 6.5 0 0 1 4 5.9" />
   </Icon>
 );
+
+export const GlobeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M3.5 12h17M12 3.5c2.4 2.5 3.6 5.3 3.6 8.5s-1.2 6-3.6 8.5c-2.4-2.5-3.6-5.3-3.6-8.5s1.2-6 3.6-8.5Z" />
+  </Icon>
+);
+
+export const GitHubIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={cn("size-[1.1em] shrink-0", className)}>
+    <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+  </svg>
+);
+
+export const YouTubeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
+    <path d="m10 9.3 5 2.7-5 2.7Z" fill="currentColor" />
+  </Icon>
+);
+
+export const XIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4.5 4h4l11 16h-4zM19.5 4l-6.3 7.2M4.5 20l6.3-7.2" />
+  </Icon>
+);
+
+export const DribbbleIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M6.2 5.8c3.5 3.8 6.2 8.8 7.6 14.5M3.6 10.6c4.3.3 9-.7 12.7-3.7M8.6 19.8c2.2-4.2 6.3-6.6 11.9-5.9" />
+  </Icon>
+);
+
+export const ScholarIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M2.5 9.5 12 5l9.5 4.5L12 14Z" />
+    <path d="M6.5 11.6v4.2c1.4 1.3 3.4 2 5.5 2s4.1-.7 5.5-2v-4.2M21.5 9.5v5" />
+  </Icon>
+);

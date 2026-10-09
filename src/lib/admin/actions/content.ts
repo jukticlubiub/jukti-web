@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { DEVELOPERS_TAG, SETTINGS_TAG, STORY_TAG, TEAM_TAG } from "@/lib/content/queries";
+import { parseLinks } from "@/lib/profile-links";
 import { type ActionState, explainDbError, failed, fieldErrors, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
 import type { AdminArea } from "../roles";
@@ -32,6 +33,34 @@ export async function setShown(previous: ActionState, fd: FormData): Promise<Act
   if (error) return failed(explainDbError(error.message));
   updateTag(cfg.tag);
   return ok(previous, shown ? "Shown on the site." : "Hidden from the site.");
+}
+
+/** Lists whose entries can be deleted for good (the others can only be hidden). */
+const deletable: ReadonlySet<ListTable> = new Set(["alumni"]);
+
+const MEDIA_MARKER = "/storage/v1/object/public/media/";
+
+/** Delete an entry for good, and its photo if it's in our storage and nothing else uses it. */
+export async function deleteRow(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const table = str(fd, "table");
+  if (!isListTable(table) || !deletable.has(table)) return failed("This list can’t be deleted from. Hide the entry instead.");
+  const cfg = lists[table];
+  const g = await guard(cfg.area);
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const { data } = await g.db.from(table).select("photo_url").eq("id", id).maybeSingle();
+  const { error } = await g.db.from(table).delete().eq("id", id);
+  if (error) return failed(explainDbError(error.message));
+  const photo = (data as { photo_url: string | null } | null)?.photo_url ?? "";
+  if (photo.includes(MEDIA_MARKER)) {
+    const [{ count: inAlumni }, { count: inTeam }] = await Promise.all([
+      g.db.from("alumni").select("id", { count: "exact", head: true }).eq("photo_url", photo),
+      g.db.from("team_members").select("id", { count: "exact", head: true }).eq("photo_url", photo),
+    ]);
+    if (!inAlumni && !inTeam) await g.db.storage.from("media").remove([photo.split(MEDIA_MARKER)[1]]);
+  }
+  updateTag(cfg.tag);
+  return ok(previous, "Deleted.");
 }
 
 /** Move a row up or down in its list (within `kind` for the team). */
@@ -87,17 +116,31 @@ export async function saveTeamMember(previous: ActionState, fd: FormData): Promi
   return ok(previous, id ? "Saved." : `Added ${m.name}.`);
 }
 
-const alumnusSchema = z.object({ name: z.string().min(1, "Enter a name.").max(80), role: z.string().max(80), term: z.string().max(20), photoUrl: z.string().nullable(), linkedin: url });
+const MAX_LINKS = 8;
 
+const alumnusSchema = z.object({
+  name: z.string().min(1, "Enter a name.").max(80),
+  role: z.string().max(80),
+  term: z.string().max(20),
+  photoUrl: z.string().nullable(),
+  email: z.union([z.literal(null), z.email("Enter an email address, like name@example.com.").max(254)]),
+});
+
+/** An alumnus or former advisor: name, role or designation, years, photo, email and profile links. */
 export async function saveAlumnus(previous: ActionState, fd: FormData): Promise<ActionState> {
   const g = await guard("alumni");
   if (!g.ok) return g.state;
   const id = str(fd, "id");
-  const parsed = alumnusSchema.safeParse({ name: str(fd, "name"), role: str(fd, "role"), term: str(fd, "term"), photoUrl: optional(fd, "photoUrl"), linkedin: optional(fd, "linkedin") });
-  if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
+  const parsed = alumnusSchema.safeParse({ name: str(fd, "name"), role: str(fd, "role"), term: str(fd, "term"), photoUrl: optional(fd, "photoUrl"), email: optional(fd, "email") });
+  const { links, invalid } = parseLinks(String(fd.get("links") ?? ""));
+  const errors: Record<string, string> = parsed.success ? {} : fieldErrors(parsed.error);
+  if (invalid) errors.links = `“${invalid}” isn’t a web link. Put one full link on each line.`;
+  else if (links.length > MAX_LINKS) errors.links = `Up to ${MAX_LINKS} links.`;
+  if (!parsed.success || Object.keys(errors).length) return failed("Check the highlighted fields.", errors);
   const a = parsed.data;
   const kind = str(fd, "kind") === "former_advisor" ? "former_advisor" : "alumnus";
-  const row = { name: a.name, role: a.role, term: a.term, photo_url: a.photoUrl, linkedin: a.linkedin };
+  // The old single LinkedIn field now lives in `links`.
+  const row = { name: a.name, role: a.role, term: a.term, photo_url: a.photoUrl, email: a.email?.toLowerCase() ?? null, links, linkedin: null };
   const { error } = id
     ? await g.db.from("alumni").update(row).eq("id", id)
     : await g.db.from("alumni").insert({ ...row, kind, position: await nextPosition(g.db, "alumni", kind) });

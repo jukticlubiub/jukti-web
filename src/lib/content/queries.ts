@@ -50,15 +50,18 @@ export async function getAlumni(): Promise<Alumnus[]> {
   cacheTag(TEAM_TAG);
   cacheLife("hours");
   if (!supabaseEnv) return fileAlumni;
-  const { data, error } = await createPublicClient().from("alumni").select("id, name, role, term, photo_url, linkedin, kind").eq("active", true).order("position");
+  const { data, error } = await createPublicClient().from("alumni").select("id, name, role, term, photo_url, linkedin, email, links, kind").eq("active", true).order("position");
   if (error) throw new Error(`Couldn't load alumni: ${error.message}`);
-  return (data as { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null; kind: "alumnus" | "former_advisor" }[]).map((r) => ({
+  type Row = { id: string; name: string; role: string; term: string; photo_url: string | null; linkedin: string | null; email: string | null; links: string[]; kind: "alumnus" | "former_advisor" };
+  return (data as Row[]).map((r) => ({
     id: r.id,
     name: r.name,
     role: r.role,
     term: r.term,
     photo: r.photo_url ?? undefined,
-    linkedin: r.linkedin ?? undefined,
+    email: r.email ?? undefined,
+    // Entries saved before links existed may still have just a LinkedIn.
+    links: [...new Set([...(r.linkedin ? [r.linkedin] : []), ...r.links])],
     kind: r.kind,
   }));
 }

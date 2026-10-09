@@ -10,7 +10,7 @@ import { getPublicMembers } from "@/lib/members/public";
 
 export const metadata: Metadata = {
   title: "Team Jukti",
-  description: "Meet the minds behind JUKTI: the faculty advisors, executive panel, members, former advisors and alumni of the Club of CSE, IUB.",
+  description: "Meet the minds behind JUKTI: the faculty advisors and executive board, former faculty advisors, alumni and members of the Club of CSE, IUB.",
 };
 
 export default async function TeamPage() {
@@ -48,9 +48,10 @@ export default async function TeamPage() {
         </Reveal>
       </section>
 
-      <MembersList members={clubMembers} />
+      {/* Executive Board (above), then former faculty advisors, alumni, and the club's members. */}
       <FormerAdvisors advisors={alumni.filter((a) => a.kind === "former_advisor")} />
       <AlumniNetwork alumni={alumni.filter((a) => a.kind !== "former_advisor")} />
+      <MembersList members={clubMembers} />
     </>
   );
 }
