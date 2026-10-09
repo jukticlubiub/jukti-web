@@ -312,6 +312,20 @@
   }
 }
 
+/* Reveal / MaskReveal with `immediate` (content at the top of a page): CSS, so it plays from the first paint. */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes mask-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+
 /* The admin panel's loading bar: a short bar sliding across the top (see AdminShell). */
 @keyframes admin-nav-progress {
   0% {

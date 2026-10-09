@@ -34,7 +34,12 @@ type TeamMemberCardProps = {
   person: TeamMember;
   /** Copies used to loop the marquee: hidden from assistive tech and the tab order. */
   duplicate?: boolean;
+  /** "first": on screen first, loaded with high priority; "eager": on screen at once; "lazy": the rest. */
+  load?: "first" | "eager" | "lazy";
 };
+
+/** The card is clamp(210px, 22.33vw, 460px) wide: 210px up to 940px screens, 460px from 2060px. */
+const CARD_SIZES = "(max-width: 940px) 210px, (max-width: 2060px) 23vw, 460px";
 
 /**
  * Portrait card from the Team Jukti design: a black-and-white photo over the card color.
@@ -42,7 +47,7 @@ type TeamMemberCardProps = {
  * at the bottom of the card so the face stays clear.
  * The photo fills the card (uploads are cropped to its 416:657 shape in the admin panel).
  */
-export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProps) {
+export function TeamMemberCard({ person, duplicate = false, load = "lazy" }: TeamMemberCardProps) {
   const palette = palettes[person.kind];
 
   const body = (
@@ -56,7 +61,9 @@ export function TeamMemberCard({ person, duplicate = false }: TeamMemberCardProp
           alt=""
           fill
           draggable={false}
-          sizes="(max-width: 768px) 62vw, 23vw"
+          sizes={CARD_SIZES}
+          loading={load === "lazy" ? "lazy" : "eager"}
+          fetchPriority={load === "first" ? "high" : undefined}
           className="object-cover object-bottom grayscale transition-[filter,scale] duration-700 ease-reveal group-hover:scale-[1.035] group-hover:grayscale-0 group-focus-visible:grayscale-0 pointer-coarse:grayscale-0"
         />
       ) : (

@@ -26,12 +26,13 @@ export default async function TeamPage() {
 
         <div className="relative px-5 pt-[clamp(8.5rem,14.5vw,18rem)] text-center">
           <h1 id="team-title" className="font-heading text-[clamp(2.1rem,5.87vw,7.4rem)]">
-            <MaskReveal>
+            <MaskReveal immediate>
               TEAM <span className="text-flare">JUKTI</span>
             </MaskReveal>
           </h1>
           <Reveal
             as="p"
+            immediate
             delay={0.15}
             className="mt-[0.35em] text-[clamp(1.1rem,2.6vw,3rem)] leading-tight font-light tracking-[-0.03em] text-fg"
           >
@@ -39,6 +40,7 @@ export default async function TeamPage() {
           </Reveal>
           <Reveal
             as="h2"
+            immediate
             delay={0.2}
             className="mt-[clamp(2.5rem,4.9vw,6rem)] font-heading text-[clamp(1.1rem,2.14vw,2.6rem)]"
           >
@@ -46,7 +48,7 @@ export default async function TeamPage() {
           </Reveal>
         </div>
 
-        <Reveal delay={0.25} className="relative mt-[clamp(1.5rem,2vw,2.75rem)]">
+        <Reveal immediate delay={0.25} className="relative mt-[clamp(1.5rem,2vw,2.75rem)]">
           <TeamCarousel people={members} />
         </Reveal>
       </section>

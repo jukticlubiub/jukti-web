@@ -11,6 +11,8 @@ const SPEED_PX_S = 45;
 const RESUME_AFTER_MS = 1800;
 /** A press that moves less than this is a click, not a drag. */
 const DRAG_THRESHOLD_PX = 6;
+/** Portraits loaded straight away rather than lazily: as many as fit on a wide screen. */
+const EAGER_CARDS = 4;
 /** Keep a focused card at least this far inside the viewport edge. */
 const FOCUS_MARGIN_PX = 24;
 
@@ -198,10 +200,12 @@ export function TeamCarousel({ people }: { people: TeamMember[] }) {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) state.current.focused = false;
   };
 
+  // The first few portraits are on screen at once: load them straight away (the first
+  // one first), not lazily, since one of them is the page's largest element.
   const renderSet = (duplicate: boolean) =>
-    people.map((person) => (
+    people.map((person, i) => (
       <li key={person.id}>
-        <TeamMemberCard person={person} duplicate={duplicate} />
+        <TeamMemberCard person={person} duplicate={duplicate} load={duplicate || i >= EAGER_CARDS ? "lazy" : i === 0 ? "first" : "eager"} />
       </li>
     ));
 
