@@ -46,20 +46,6 @@ const GLOW_LAYERS = [
 /** Below this width (phones) only the glow and core are drawn, without the wide glow or the strands. */
 const COMPACT_BELOW = 768;
 
-/** Scroll-linked animation timelines (not in TypeScript's DOM types yet). */
-declare const ScrollTimeline: new (options: { source?: Element | null; axis?: "block" | "inline" }) => AnimationTimeline;
-type ScrollAnimationOptions = KeyframeAnimationOptions & { rangeStart: string; rangeEnd: string };
-
-/**
- * Whether the browser can run animations from the scroll position itself (Chrome, Edge,
- * Safari 26+). Then the ball moves in step with the page as it scrolls, on the graphics
- * chip; scripts only hear about a scroll after the page has moved, so a ball moved from
- * a scroll listener trails the page and jitters on phones.
- */
-function canAnimateOnScroll() {
-  return typeof ScrollTimeline === "function" && "rangeStart" in Animation.prototype;
-}
-
 type Pt = { x: number; y: number };
 /** A point the line passes through, heading in direction `d` (a unit vector). */
 type Waypoint = Pt & { d: Pt };
@@ -156,19 +142,6 @@ function lengthForScroll(keys: Route["keys"], scroll: number) {
   return keys[keys.length - 1].len;
 }
 
-/** The scroll position at which the ball reaches `len` along the line (the inverse of lengthForScroll). */
-function scrollForLength(keys: Route["keys"], len: number) {
-  if (len <= keys[0].len) return keys[0].scroll;
-  for (let i = 1; i < keys.length; i++) {
-    if (len <= keys[i].len) {
-      const a = keys[i - 1];
-      const b = keys[i];
-      return a.scroll + ((len - a.len) / (b.len - a.len || 1)) * (b.scroll - a.scroll);
-    }
-  }
-  return keys[keys.length - 1].scroll;
-}
-
 export function StoryMap({ chapters }: { chapters: Chapter[] }) {
   const reduceMotion = useReducedMotion() ?? false;
   const container = useRef<HTMLDivElement>(null);
@@ -185,8 +158,6 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
   const ball = useRef<HTMLDivElement>(null);
   const ballShown = useRef(false);
   const routeRef = useRef<Route | null>(null);
-  /** Whether the browser moves the ball and draws the line from the scroll position itself. */
-  const onScrollTimeline = useRef(false);
   const passedRef = useRef(0);
 
   const [route, setRoute] = useState<Route | null>(null);
@@ -207,18 +178,16 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
     const r = routeRef.current;
     if (!r) return;
     const len = Math.min(r.total, lengthForScroll(r.keys, scroll));
-    if (!onScrollTimeline.current) {
-      // Each piece is drawn on its own (pathLength 1): only the one the ball is on changes,
-      // so a scroll repaints a short piece of line instead of the whole page-tall path.
-      r.segments.forEach((seg, i) => {
-        const part = seg.len > 0 ? Math.min(1, Math.max(0, (len - seg.start) / seg.len)) : 1;
-        if (shown.current[i] === part) return;
-        shown.current[i] = part;
-        const piece = pieces.current[i];
-        if (piece) piece.style.strokeDashoffset = String(1 - part);
-      });
-      if (ball.current) ball.current.style.transform = ballTransform(pointAt(r.samples, len));
-    }
+    // Each piece is drawn on its own (pathLength 1): only the one the ball is on changes,
+    // so a scroll repaints a short piece of line instead of the whole page-tall path.
+    r.segments.forEach((seg, i) => {
+      const part = seg.len > 0 ? Math.min(1, Math.max(0, (len - seg.start) / seg.len)) : 1;
+      if (shown.current[i] === part) return;
+      shown.current[i] = part;
+      const piece = pieces.current[i];
+      if (piece) piece.style.strokeDashoffset = String(1 - part);
+    });
+    if (ball.current) ball.current.style.transform = ballTransform(pointAt(r.samples, len));
     const show = len > 1;
     if (ball.current && ballShown.current !== show) {
       ballShown.current = show;
@@ -322,48 +291,10 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
     };
   }, [layout]);
 
-  // Once the route's pieces are in the DOM: where the browser can, it moves the ball and draws
-  // each piece of line from the scroll position itself (see canAnimateOnScroll). The keyframes
-  // are the same mapping draw() uses: each sampled point at the scroll position that reaches it.
+  // Redraw once the new route's pieces are in the DOM.
   useEffect(() => {
-    if (!route) return;
-    const animations: Animation[] = [];
-    const endScroll = route.keys[route.keys.length - 1].scroll;
-    const endLen = route.keys[route.keys.length - 1].len;
-    onScrollTimeline.current = false;
     shown.current = [];
-    if (canAnimateOnScroll() && ball.current && endScroll > 0) {
-      try {
-        const timeline = new ScrollTimeline({ source: document.documentElement, axis: "block" });
-        const between = (from: number, to: number): ScrollAnimationOptions => ({
-          timeline,
-          rangeStart: `${from.toFixed(1)}px`,
-          rangeEnd: `${Math.max(to, from + 1).toFixed(1)}px`,
-          fill: "both",
-          easing: "linear",
-        });
-        const frames = route.samples
-          .filter((s) => s.len < endLen)
-          .map((s) => ({ offset: scrollForLength(route.keys, s.len) / endScroll, transform: ballTransform(s) }));
-        frames.push({ offset: 1, transform: ballTransform(pointAt(route.samples, endLen)) });
-        animations.push(ball.current.animate(frames, between(0, endScroll)));
-        route.segments.forEach((seg, i) => {
-          const piece = pieces.current[i];
-          if (!piece) return;
-          const from = scrollForLength(route.keys, seg.start);
-          const to = scrollForLength(route.keys, seg.start + seg.len);
-          animations.push(piece.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], between(from, to)));
-        });
-        onScrollTimeline.current = true;
-      } catch {
-        // Not supported after all: draw() moves the ball and draws the line instead.
-        for (const a of animations.splice(0)) a.cancel();
-      }
-    }
     draw(window.scrollY);
-    return () => {
-      for (const a of animations) a.cancel();
-    };
   }, [route, draw]);
 
   useMotionValueEvent(scrollY, "change", draw);
