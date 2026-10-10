@@ -355,8 +355,9 @@ export function LogoStory() {
       </div>
 
       <div className="mt-[clamp(2.5rem,5vw,4.5rem)] grid gap-8 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-[clamp(3rem,6vw,7rem)]">
-        {/* The stage: sticky beside (or, on phones, above) the steps. */}
-        <div className="sticky top-[4.75rem] z-10 max-md:-mx-5 max-md:bg-black max-md:px-5 max-md:pb-4 max-md:shadow-[0_28px_24px_-6px_#000] md:order-2 md:top-[max(6rem,calc(50svh-min(34rem,100svh-11rem)/2-1.5rem))] md:self-start">
+        {/* The stage: sticky beside (or, on phones, above) the steps. On phones its black panel
+            stops at the page's right padding, leaving the About line's lane (the right edge) clear. */}
+        <div className="sticky top-[4.75rem] z-10 max-md:-ml-5 max-md:bg-black max-md:pb-4 max-md:pl-5 max-md:shadow-[0_28px_24px_-6px_#000] md:order-2 md:top-[max(6rem,calc(50svh-min(34rem,100svh-11rem)/2-1.5rem))] md:self-start">
           <div className="glass-card relative mx-auto aspect-square w-[min(100%,46svh)] overflow-hidden bg-black/60 md:w-[min(100%,34rem,100svh-11rem)]">
             <div aria-hidden className="absolute inset-[18%] rounded-full bg-[radial-gradient(closest-side,rgb(245_124_72/0.18),transparent)]" />
             <div className="absolute inset-[6%]">

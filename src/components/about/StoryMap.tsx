@@ -56,6 +56,9 @@ type Segment = { d: string; start: number; len: number };
 
 type Route = {
   width: number;
+  /** Where the line's box starts on the page (its top-left), for placing the ball on screen. */
+  pageX: number;
+  pageY: number;
   height: number;
   d: string;
   segments: Segment[];
@@ -174,7 +177,9 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
   const idle = useIdle();
   const [markReady, setMarkReady] = useState(false);
 
-  const draw = useCallback((scroll: number) => {
+  // Always the page's current scroll: the ball is placed on screen from it (see below).
+  const draw = useCallback(() => {
+    const scroll = window.scrollY;
     const r = routeRef.current;
     if (!r) return;
     const len = Math.min(r.total, lengthForScroll(r.keys, scroll));
@@ -187,7 +192,14 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
       const piece = pieces.current[i];
       if (piece) piece.style.strokeDashoffset = String(1 - part);
     });
-    if (ball.current) ball.current.style.transform = ballTransform(pointAt(r.samples, len));
+    // The ball is fixed to the screen, placed where its point of the line is now. Phones scroll
+    // the page between script updates (in some in-app browsers only every few frames): a ball on
+    // the page would ride up with it and jump back at each update; on screen, it stays put at the
+    // reading line, where the ball sits for most of the scroll anyway.
+    if (ball.current) {
+      const p = pointAt(r.samples, len);
+      ball.current.style.transform = ballTransform({ x: r.pageX + p.x - window.scrollX, y: r.pageY + p.y - scroll });
+    }
     const show = len > 1;
     if (ball.current && ballShown.current !== show) {
       ballShown.current = show;
@@ -263,7 +275,7 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
       const scroll = top + points[i].y - reading;
       if (scroll > keys[keys.length - 1].scroll + 1) keys.push({ scroll, len: lens[i] });
     }
-    const next: Route = { width: W, height: c.height, d, segments, total, samples, keys, nodeLens: nodeIndexes.map((i) => lens[i]) };
+    const next: Route = { width: W, pageX: c.left + window.scrollX, pageY: top, height: c.height, d, segments, total, samples, keys, nodeLens: nodeIndexes.map((i) => lens[i]) };
     routeRef.current = next;
     setRoute(next);
   }, [chapters]);
@@ -294,7 +306,7 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
   // Redraw once the new route's pieces are in the DOM.
   useEffect(() => {
     shown.current = [];
-    draw(window.scrollY);
+    draw();
   }, [route, draw]);
 
   useMotionValueEvent(scrollY, "change", draw);
@@ -355,7 +367,7 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
       <div
         ref={ball}
         aria-hidden
-        className="pointer-events-none absolute top-0 left-0 z-20 size-[22px] rounded-full opacity-0 transition-opacity duration-300 will-change-transform"
+        className="pointer-events-none fixed top-0 left-0 z-20 size-[22px] rounded-full opacity-0 transition-opacity duration-300 will-change-transform"
         style={{
           background: "radial-gradient(circle at 35% 30%, #ffffff, #ffe2d1 45%, #f57c48 100%)",
           boxShadow: "0 0 0 6px rgb(245 124 72 / 0.12), 0 0 30px 6px rgb(245 124 72 / 0.55)",
