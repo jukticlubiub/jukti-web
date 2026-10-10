@@ -15,6 +15,16 @@ export const metadata: Metadata = {
   applicationName: site.name,
   category: "education",
   openGraph: baseOpenGraph,
+  // Fixed addresses (in public/), not Next's generated icon routes, whose URLs change with every
+  // build: Google wants a stable favicon URL before it shows the icon next to search results.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   twitter: { card: "summary_large_image" },
   // Google Search Console's "HTML tag" check, if the site is verified that way: set the code from the tag.
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
