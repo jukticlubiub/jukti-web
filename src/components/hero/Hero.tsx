@@ -34,6 +34,7 @@ function TitleLine({ children, delay, className }: { children: React.ReactNode; 
  */
 export function Hero() {
   const root = useRef<HTMLElement>(null);
+  const spacer = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
 
@@ -47,6 +48,7 @@ export function Hero() {
         start: "top top",
         end: () => `+=${peekDistance()}`,
         pin: true,
+        pinSpacer: spacer.current,
         invalidateOnRefresh: true,
       });
 
@@ -80,12 +82,14 @@ export function Hero() {
     { scope: root },
   );
 
-  // The pin wraps the section in a GSAP "pin-spacer". This div stays the section's
-  // React-owned parent, so the spacer never becomes a direct child of <main>, where
-  // React inserts the next page when navigating away (Next keeps this page mounted,
-  // hidden, in an <Activity>).
+  // This div is the pin's "pin-spacer". Left to itself, ScrollTrigger would wrap the section
+  // in a new div once the page's JavaScript runs; moving the section restarts its CSS
+  // animations, so on a slow first load the title rose, vanished and rose again. Given a
+  // spacer that already holds the section, it only styles it. It also keeps the spacer a
+  // React-owned element inside <main>, where React inserts the next page when navigating
+  // away (Next keeps this page mounted, hidden, in an <Activity>).
   return (
-    <div>
+    <div ref={spacer}>
       <section ref={root} aria-labelledby="hero-title" className="@container relative h-svh">
         <HeroBackdrop progress={progress} />
 
