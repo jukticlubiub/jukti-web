@@ -48,9 +48,10 @@ export default async function TeamPage() {
           </Reveal>
         </div>
 
-        <Reveal immediate delay={0.25} className="relative mt-[clamp(1.5rem,2vw,2.75rem)]">
+        {/* Shown straight away, not faded in: its first portrait is the page's largest element. */}
+        <div className="relative mt-[clamp(1.5rem,2vw,2.75rem)]">
           <TeamCarousel people={members} />
-        </Reveal>
+        </div>
       </section>
 
       {/* Executive Board (above), then former faculty advisors, alumni, and the club's members. */}
