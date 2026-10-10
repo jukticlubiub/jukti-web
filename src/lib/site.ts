@@ -13,7 +13,7 @@ export const site = {
   fullName: "JUKTI, Club of CSE, IUB",
   tagline: "The largest CSE Student Community at IUB",
   description:
-    "JUKTI is the Club of Computer Science and Engineering at Independent University, Bangladesh. Founded in 2014 to foster innovation, creativity, and technical excellence among CSE students.",
+    "JUKTI (the JUKTIverse) is the Club of Computer Science and Engineering at Independent University, Bangladesh. Founded in 2014 to foster innovation, creativity, and technical excellence among CSE students.",
   url: siteUrl.replace(/\/+$/, ""),
   socials: {
     facebook: "https://www.facebook.com/jukti.cse.iub",

@@ -95,7 +95,8 @@ export function Hero() {
         >
           <h1 id="hero-title" className="font-heading inline-flex flex-col items-end text-[clamp(2.2rem,6.15cqw,8rem)]">
             <TitleLine delay={0.25} className="-mb-[0.3em] text-[0.355em]">
-              Welcome to the
+              {/* The space keeps the heading's text "Welcome to the JUKTIverse" (the lines are separate blocks). */}
+              Welcome to the{" "}
             </TitleLine>
             <TitleLine delay={0.1}>JUKTIverse</TitleLine>
           </h1>

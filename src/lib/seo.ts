@@ -11,32 +11,39 @@ export const defaultShareImage = {
   alt: "JUKTI, Club of CSE, IUB: the largest CSE student community at Independent University, Bangladesh",
 };
 
-/** Open Graph fields every page shares. A page's own `openGraph` replaces the layout's entirely, so pages start from these. */
-export const baseOpenGraph = { siteName: site.fullName, locale: "en_US", type: "website" } as const;
+/**
+ * Open Graph fields every page shares. A page's own `openGraph` replaces the layout's entirely,
+ * so pages start from these. `siteName` matches the WebSite structured data's name ("JUKTI"):
+ * Google picks the site name shown in results from these, and they must agree.
+ */
+export const baseOpenGraph = { siteName: site.name, locale: "en_US", type: "website" } as const;
 
 /**
  * Metadata for a public page: title and description, its canonical address (so search
  * engines treat ?query variants as the same page), and how it looks when shared. Without
  * `image`, the shared card uses the site's default picture. (A page that sets its own
- * openGraph loses the layout's image, so it's always set here.)
+ * openGraph loses the layout's image, so it's always set here.) `fullTitle` replaces the
+ * whole title, without the " · JUKTI" ending (for the home page).
  */
 export function pageMetadata({
   title,
+  fullTitle,
   description,
   path,
   image,
   type = "website",
 }: {
   title?: string;
+  fullTitle?: string;
   description: string;
   path: string;
   image?: { url: string; alt?: string };
   type?: "website" | "article";
 }): Metadata {
-  const shareTitle = title ? `${title} · ${site.name}` : siteTitle;
+  const shareTitle = fullTitle ?? (title ? `${title} · ${site.name}` : siteTitle);
   const images = [image ?? defaultShareImage];
   return {
-    ...(title ? { title } : {}),
+    ...(fullTitle ? { title: { absolute: fullTitle } } : title ? { title } : {}),
     description,
     alternates: { canonical: path },
     openGraph: { ...baseOpenGraph, type, url: path, title: shareTitle, description, images },

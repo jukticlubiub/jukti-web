@@ -18,7 +18,7 @@ import { currentSemester, intakeLabel } from "@/lib/members/semester";
 export const metadata: Metadata = pageMetadata({
   title: "Join JUKTI",
   description:
-    "Become a member of JUKTI, the Club of CSE at IUB: sign in with your IUB Google account and register.",
+    "Become a member of JUKTI, the Club of CSE at IUB, and join the JUKTIverse: sign in with your IUB Google account and register.",
   path: "/join",
 });
 
@@ -63,7 +63,7 @@ async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams
     return (
       <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card>
-          <Eyebrow>Become a member</Eyebrow>
+          <Eyebrow>Join the JUKTIverse</Eyebrow>
           <h2 className="mt-3 font-heading text-[clamp(1.4rem,2.4vw,2rem)] leading-tight">Sign in with your IUB account</h2>
           <p className="mt-3 leading-relaxed text-body/85">
             Already registered? Sign in the same way and you’ll go straight to your profile and member card.

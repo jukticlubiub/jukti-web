@@ -8,10 +8,17 @@ import { pageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
+  fullTitle: "JUKTI · Club of CSE, IUB | JUKTIverse",
   description:
-    "JUKTI is the Club of Computer Science and Engineering (CSE) at Independent University, Bangladesh (IUB): workshops, hackathons, seminars, the Academic Helpline and the largest CSE student community at IUB since 2014.",
+    "JUKTI, the JUKTIverse, is the Club of Computer Science and Engineering (CSE) at Independent University, Bangladesh (IUB): workshops, hackathons, seminars, the Academic Helpline and the largest CSE student community at IUB since 2014.",
   path: "/",
 });
+
+/**
+ * Other names people use for the club and this site, most preferred first. The lowercase
+ * domain is Google's suggested fallback for the site name. Same names in both nodes below.
+ */
+const alternateNames = ["JUKTIverse", "JUKTI IUB", "JUKTI, Club of CSE, IUB", "juktiverse.com"];
 
 export default async function HomePage() {
   const [{ members }, socials] = await Promise.all([getTeam(), getSocials()]);
@@ -39,7 +46,7 @@ function structuredData(socials: { facebook: string; instagram: string; linkedin
     "@id": `${site.url}/#organization`,
     name: site.name,
     legalName: "JUKTI – Club of Computer Science and Engineering, Independent University, Bangladesh",
-    alternateName: ["JUKTI IUB", "JUKTI, Club of CSE, IUB", "Club of CSE, IUB", "IUB CSE Club"],
+    alternateName: [...alternateNames, "Club of CSE, IUB", "IUB CSE Club"],
     description: site.description,
     url: site.url,
     logo: { "@type": "ImageObject", url: `${site.url}/brand/jukti-logo-512.png`, width: 512, height: 512 },
@@ -59,7 +66,7 @@ function structuredData(socials: { facebook: string; instagram: string; linkedin
     "@type": "WebSite",
     "@id": `${site.url}/#website`,
     name: site.name,
-    alternateName: ["JUKTI IUB", site.fullName],
+    alternateName: alternateNames,
     url: `${site.url}/`,
     publisher: { "@id": `${site.url}/#organization` },
     inLanguage: "en",

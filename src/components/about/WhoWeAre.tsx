@@ -34,7 +34,7 @@ export function WhoWeAre() {
           <Reveal as="p" delay={0.1} className="mt-6 max-w-xl text-[clamp(1.02rem,1.2vw,1.18rem)] leading-relaxed text-body/85">
             JUKTI is the club of the Department of Computer Science and Engineering at IUB: a place to explore technology,
             sharpen problem-solving, and gain practical experience beyond the classroom. It welcomes every CSE student, whether
-            you’re writing your first program or already shipping projects.
+            you’re writing your first program or already shipping projects. Together, we call it the JUKTIverse.
           </Reveal>
           <Reveal as="p" delay={0.15} className="mt-5 max-w-xl text-[clamp(1.02rem,1.2vw,1.18rem)] leading-relaxed text-body/85">
             Our alumni work in software engineering, data science, research, entrepreneurship and higher education, in

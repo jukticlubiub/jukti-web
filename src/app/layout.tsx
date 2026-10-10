@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: `%s · ${site.name}`,
   },
   description: site.description,
-  applicationName: site.fullName,
+  applicationName: site.name,
   category: "education",
   openGraph: baseOpenGraph,
   twitter: { card: "summary_large_image" },

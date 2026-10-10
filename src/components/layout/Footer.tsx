@@ -24,7 +24,7 @@ export async function Footer() {
           <Link href="/" aria-label="JUKTI home" className="inline-block w-fit transition-opacity hover:opacity-80">
             <Logo className="w-44 text-fg" />
           </Link>
-          <p className="max-w-sm text-muted">{site.tagline}. Independent University, Bangladesh.</p>
+          <p className="max-w-sm text-muted">{site.tagline}, Independent University, Bangladesh. Welcome to the JUKTIverse.</p>
           <Link href={joinLink.href} className="btn-pill btn-primary text-sm">
             {joinLink.label}
           </Link>
@@ -75,7 +75,7 @@ export async function Footer() {
 
       <div className="relative mx-auto mt-16 flex max-w-7xl items-center gap-6 text-sm text-body">
         <span aria-hidden className="h-px flex-1 bg-fg/40" />
-        <span>JUKTI - Club Of CSE, IUB</span>
+        <span>JUKTI · Club of CSE, IUB</span>
         <span aria-hidden className="text-fg/40">·</span>
         <Link href="/developers" className="transition-colors hover:text-flare">
           Developers
