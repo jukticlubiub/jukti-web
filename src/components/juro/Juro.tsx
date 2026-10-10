@@ -42,8 +42,8 @@ const TURN_RADIUS_PX = 70;
 const MAX_SIDEWAYS_SHARE = 0.25;
 /** How quickly he catches up with the page when it jumps or scrolls unevenly (per second). */
 const FOLLOW_RATE = 16;
-/** He ducks out once the footer (which has no free spot) fills this much of the screen. */
-const FOOTER_SHARE = 0.4;
+/** He ducks out once the footer (which has no free spot) comes within this far of his feet (px). */
+const FOOTER_GAP_PX = 8;
 /** While his first spot scrolls into view, he steps in to it from the side margin over this much scrolling (× screen height). */
 const STEP_IN = 0.25;
 /** Scrolling back up this far past his first spot (× screen height) makes him vanish (a nudge doesn't). */
@@ -81,6 +81,7 @@ type Rig = {
   bubbleSide: "top" | "left";
   canvasW: number; // his box's layout width: always the peek's (he's scaled down from it), 0 until set
   resolution: number; // last value given to the brain
+  clip: string; // the clip-path last set (he's cut off at the footer's top edge)
 };
 
 /*
@@ -362,6 +363,7 @@ function JuroOnPage() {
     bubbleSide: "top",
     canvasW: 0,
     resolution: 1,
+    clip: "",
   });
   const inviteTimer = useRef(0);
   const reduceMotion = useReducedMotion() ?? false;
@@ -549,12 +551,12 @@ function JuroOnPage() {
     const current = stops[Math.min(Math.round(r.g), stops.length - 1)];
     const atTop = departure < 1 || r.hold > 0.5;
 
-    // The footer has no free spot: once it fills a good part of the screen (or the page
-    // can't scroll further), he waves goodbye and ducks out, riding his last spot away.
-    const footer = document.querySelector("footer")?.getBoundingClientRect();
-    const footerShown = footer ? Math.min(vh, footer.bottom) - Math.max(0, footer.top) : 0;
+    // The footer has no free spot: as soon as its top edge reaches his feet (or the page can't
+    // scroll further), he waves goodbye and ducks out, riding his last spot away. He's never
+    // drawn over it: see the clip below.
+    const footerTop = document.querySelector("footer")?.getBoundingClientRect().top ?? Infinity;
     const atEnd = vh + window.scrollY >= document.documentElement.scrollHeight - 4;
-    const footerAway = footerShown >= vh * FOOTER_SHARE || atEnd;
+    const footerAway = footerTop <= bodyBottom(shown) + FOOTER_GAP_PX || atEnd;
     b.away = footerAway;
     const gone = footerAway || r.out >= 1;
     if (gone !== goneRef.current) {
@@ -600,6 +602,16 @@ function JuroOnPage() {
     const scale = shown.w / r.canvasW;
     el.style.transform = `translate3d(${shown.x.toFixed(1)}px, ${shown.y.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
     el.style.setProperty("--juro-s", scale.toFixed(4));
+
+    // Cut off at the footer's top edge, so he's never over it: as it rises he sinks behind it.
+    // In his box's own (unscaled) px; the other edges reach far out, for his speech bubble.
+    const boxH = r.canvasW * 1.2;
+    const aboveFooter = (footerTop - shown.y) / scale;
+    const clip = aboveFooter >= boxH ? "" : `inset(-9999px -9999px ${(boxH - Math.max(0, aboveFooter)).toFixed(1)}px -9999px)`;
+    if (clip !== r.clip) {
+      r.clip = clip;
+      el.style.clipPath = clip;
+    }
   });
 
   return (
