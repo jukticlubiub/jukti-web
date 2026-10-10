@@ -52,6 +52,20 @@ const BALLS: { ring: number; start: number; speed: number; size: number }[] = [
 const OPEN_AT_ONCE = 3;
 const CYCLE_MS = 2200;
 
+/** The rings fade out toward the bottom (the SVG's orbit-mask): from 70% of the height to 97%. */
+function fadeAt(y: number) {
+  return Math.min(1, Math.max(0, (VIEW_H * 0.97 - y) / (VIEW_H * 0.27)));
+}
+
+/**
+ * Where a ball sits, as a CSS transform: its box's top-left, in the stage's container width
+ * (1 view unit = 0.1cqw, since the view is 1000 units wide), so it scales with the stage.
+ */
+function ballTransform(x: number, y: number, size: number) {
+  const r = 16 * size;
+  return `translate3d(${((x - r) / 10).toFixed(2)}cqw, ${((y - r) / 10).toFixed(2)}cqw, 0)`;
+}
+
 function pointOn(ring: number, angleDeg: number) {
   const a = (angleDeg * Math.PI) / 180;
   return { x: CX + RINGS[ring] * Math.cos(a), y: CY + RINGS[ring] * Math.sin(a) };
@@ -120,8 +134,10 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
     return () => clearInterval(id);
   }, [reduceMotion, chipCount]);
 
-  // Glowing balls move along their rings; positions are written straight to the SVG.
-  const ballRefs = useRef<(SVGGElement | null)[]>([]);
+  // Glowing balls move along their rings. They're their own layers above the SVG, moved with
+  // transforms the graphics chip applies without repainting (inside the masked SVG, every
+  // move repainted the whole orbit through its mask).
+  const ballRefs = useRef<(HTMLDivElement | null)[]>([]);
   const elapsed = useRef(0);
   useEffect(() => {
     const stage = stageRef.current;
@@ -137,7 +153,10 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
     elapsed.current += Math.min(delta, 64) / 1000;
     BALLS.forEach((ball, i) => {
       const { x, y } = pointOn(ball.ring, ball.start + ball.speed * elapsed.current);
-      ballRefs.current[i]?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+      const el = ballRefs.current[i];
+      if (!el) return;
+      el.style.transform = ballTransform(x, y, ball.size);
+      el.style.opacity = fadeAt(y).toFixed(3);
     });
   });
 
@@ -161,11 +180,6 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
             <mask id="orbit-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width={VIEW_W + 200} height={VIEW_H + 200}>
               <rect x="-100" y="-100" width={VIEW_W + 200} height={VIEW_H + 200} fill="url(#orbit-fade)" />
             </mask>
-            <radialGradient id="ball-glow">
-              <stop offset="0" stopColor="#fff3ea" stopOpacity="0.95" />
-              <stop offset="0.25" stopColor="#f57c48" stopOpacity="0.7" />
-              <stop offset="1" stopColor="#f57c48" stopOpacity="0" />
-            </radialGradient>
             <radialGradient id="core-glow">
               <stop offset="0" stopColor="#662a11" stopOpacity="0.55" />
               <stop offset="1" stopColor="#662a11" stopOpacity="0" />
@@ -181,23 +195,27 @@ export function JoinCommunity({ members }: { members: TeamMember[] }) {
                 <circle cx={CX} cy={CY} r={r} stroke="#f57c48" strokeOpacity="0.7" strokeWidth="1.4" />
               </g>
             ))}
-            {BALLS.map((ball, i) => {
-              const { x, y } = pointOn(ball.ring, ball.start);
-              return (
-                <g
-                  key={i}
-                  ref={(el) => {
-                    ballRefs.current[i] = el;
-                  }}
-                  transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
-                >
-                  <circle r={16 * ball.size} fill="url(#ball-glow)" />
-                  <circle r={3.4 * ball.size} fill="#fff6ef" />
-                </g>
-              );
-            })}
           </g>
         </svg>
+
+        {/* The glowing balls (see ballRefs). */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {BALLS.map((ball, i) => {
+            const { x, y } = pointOn(ball.ring, ball.start);
+            return (
+              <div
+                key={i}
+                ref={(el) => {
+                  ballRefs.current[i] = el;
+                }}
+                className="absolute top-0 left-0 grid place-items-center rounded-full bg-[radial-gradient(closest-side,rgb(255_243_234/0.95),rgb(245_124_72/0.7)_25%,rgb(245_124_72/0))] will-change-transform"
+                style={{ width: `${(32 * ball.size) / 10}cqw`, height: `${(32 * ball.size) / 10}cqw`, transform: ballTransform(x, y, ball.size), opacity: fadeAt(y) }}
+              >
+                <span className="block rounded-full bg-[#fff6ef]" style={{ width: `${(6.8 * ball.size) / 10}cqw`, height: `${(6.8 * ball.size) / 10}cqw` }} />
+              </div>
+            );
+          })}
+        </div>
 
         {/* Juro's spot: the bottom-right corner, where the rings have faded out and no chip rests.
             On the right, below his Our History spot, so he glides straight down to it. */}

@@ -4,7 +4,10 @@ import { useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoMark } from "@/components/brand/Logo";
 import { ArrowIcon } from "@/components/ui/icons";
+import { useHasWebGL } from "@/components/ui/useHasWebGL";
+import { useIdle } from "@/components/ui/useIdle";
 import { Reveal } from "@/components/ui/Reveal";
 import type { StoryChapter as Chapter } from "@/lib/data/story";
 import { joinLink } from "@/lib/site";
@@ -34,15 +37,28 @@ const STRANDS: [number, number, number][] = [
   [-5, -7, 0.14],
 ];
 
+/** The glowing, drawn part of the line: wide faint glow, glow, bright core. */
+const GLOW_LAYERS = [
+  { w: 16, o: 0.05, c: "#f57c48" },
+  { w: 8, o: 0.14, c: "#f57c48" },
+  { w: 2.4, o: 1, c: "#fff3ea" },
+];
+/** Below this width (phones) only the glow and core are drawn, without the wide glow or the strands. */
+const COMPACT_BELOW = 768;
+
 type Pt = { x: number; y: number };
 /** A point the line passes through, heading in direction `d` (a unit vector). */
 type Waypoint = Pt & { d: Pt };
 type Sample = { len: number; x: number; y: number };
 
+/** One curve of the line: drawn on its own, so scrolling only repaints the piece the ball is on. */
+type Segment = { d: string; start: number; len: number };
+
 type Route = {
   width: number;
   height: number;
   d: string;
+  segments: Segment[];
   total: number;
   samples: Sample[];
   /** Scroll position → length along the line, as matching pairs (increasing). */
@@ -69,6 +85,7 @@ function buildPath(points: Waypoint[]) {
   let d = `M${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
   const samples: Sample[] = [{ len: 0, x: points[0].x, y: points[0].y }];
   const lens = [0];
+  const segments: Segment[] = [];
   let len = 0;
   for (let i = 1; i < points.length; i++) {
     const p0 = points[i - 1];
@@ -76,7 +93,9 @@ function buildPath(points: Waypoint[]) {
     const reach = Math.hypot(p1.x - p0.x, p1.y - p0.y) * 0.42;
     const c1 = { x: p0.x + p0.d.x * reach, y: p0.y + p0.d.y * reach };
     const c2 = { x: p1.x - p1.d.x * reach, y: p1.y - p1.d.y * reach };
-    d += ` C${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+    const curve = ` C${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+    d += curve;
+    const start = len;
     let prev: Pt = p0;
     for (let k = 1; k <= 48; k++) {
       const p = bezier(p0, c1, c2, p1, k / 48);
@@ -85,8 +104,9 @@ function buildPath(points: Waypoint[]) {
       prev = p;
     }
     lens.push(len);
+    segments.push({ d: `M${p0.x.toFixed(1)} ${p0.y.toFixed(1)}${curve}`, start, len: len - start });
   }
-  return { d, samples, total: len, lens };
+  return { d, segments, samples, total: len, lens };
 }
 
 function pointAt(samples: Sample[], len: number): Pt {
@@ -126,7 +146,10 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
   const endNode = useRef<HTMLSpanElement>(null);
   const nodes = useRef<(HTMLSpanElement | null)[]>([]);
   const rows = useRef<(HTMLLIElement | null)[]>([]);
-  const drawn = useRef<(SVGPathElement | null)[]>([]);
+  /** Drawn paths, per segment (one per glow layer and strand). */
+  const drawn = useRef<SVGPathElement[][]>([]);
+  /** How much of each segment was showing last time (0..1), so unchanged ones aren't touched. */
+  const shown = useRef<number[]>([]);
   const ball = useRef<HTMLDivElement>(null);
   const routeRef = useRef<Route | null>(null);
 
@@ -138,13 +161,25 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
 
   const { scrollY } = useScroll();
 
+  // The 3D mark: only on a graphics card, once the page is idle. Until it's drawn (or
+  // where it can't run), the flat mark stands in.
+  const webgl = useHasWebGL();
+  const idle = useIdle();
+  const [markReady, setMarkReady] = useState(false);
+
   const draw = useCallback((scroll: number) => {
     const r = routeRef.current;
     if (!r) return;
     const len = Math.min(r.total, lengthForScroll(r.keys, scroll));
-    for (const path of drawn.current) {
-      if (path) path.style.strokeDashoffset = String(r.total - len);
-    }
+    // Each segment is drawn on its own (pathLength 1): only the one the ball is on changes,
+    // so a scroll repaints a short piece of line instead of the whole page-tall path.
+    r.segments.forEach((seg, i) => {
+      const part = seg.len > 0 ? Math.min(1, Math.max(0, (len - seg.start) / seg.len)) : 1;
+      if (shown.current[i] === part) return;
+      shown.current[i] = part;
+      // Unmounted layers leave null refs (the phone layout draws fewer).
+      for (const path of drawn.current[i] ?? []) if (path) path.style.strokeDashoffset = String(1 - part);
+    });
     const p = pointAt(r.samples, len);
     if (ball.current) {
       ball.current.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
@@ -205,7 +240,7 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
     }
     if (points.length < heroPoints + 1) return;
 
-    const { d, samples, total, lens } = buildPath(points);
+    const { d, segments, samples, total, lens } = buildPath(points);
     const top = c.top + window.scrollY;
     const reading = window.innerHeight * READING_LINE;
     // The ball starts at the hero's left edge, then reaches each point after the hero
@@ -215,7 +250,8 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
       const scroll = top + points[i].y - reading;
       if (scroll > keys[keys.length - 1].scroll + 1) keys.push({ scroll, len: lens[i] });
     }
-    const next: Route = { width: W, height: c.height, d, total, samples, keys, nodeLens: nodeIndexes.map((i) => lens[i]) };
+    const next: Route = { width: W, height: c.height, d, segments, total, samples, keys, nodeLens: nodeIndexes.map((i) => lens[i]) };
+    shown.current = [];
     routeRef.current = next;
     setRoute(next);
   }, [chapters]);
@@ -241,8 +277,8 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
 
   useMotionValueEvent(scrollY, "change", draw);
 
-  const total = route?.total ?? 0;
-  const dash = { strokeDasharray: total, strokeDashoffset: total };
+  // Each drawn piece has pathLength 1: dash 1, gap 1, starting fully hidden.
+  const dash = { strokeDasharray: "1 1", strokeDashoffset: 1 };
 
   return (
     <div ref={container} className="relative">
@@ -261,37 +297,33 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
           {STRANDS.map(([dx, dy, o]) => (
             <path key={`t${dx}`} d={route.d} transform={`translate(${dx} ${dy})`} stroke="#ffffff" strokeOpacity={o * 0.25} strokeWidth="1" />
           ))}
-          {[
-            { w: 16, o: 0.05, c: "#f57c48" },
-            { w: 8, o: 0.14, c: "#f57c48" },
-            { w: 2.4, o: 1, c: "#fff3ea" },
-          ].map((s, i) => (
-            <path
-              key={`g${i}`}
-              ref={(el) => {
-                drawn.current[i] = el;
-              }}
-              d={route.d}
-              stroke={s.c}
-              strokeOpacity={s.o}
-              strokeWidth={s.w}
-              style={dash}
-            />
-          ))}
-          {STRANDS.map(([dx, dy, o], i) => (
-            <path
-              key={`s${dx}`}
-              ref={(el) => {
-                drawn.current[3 + i] = el;
-              }}
-              d={route.d}
-              transform={`translate(${dx} ${dy})`}
-              stroke="#ffffff"
-              strokeOpacity={o}
-              strokeWidth="1"
-              style={dash}
-            />
-          ))}
+          {/* The drawn part, one piece per curve (see draw). Butt caps so the pieces meet seamlessly. */}
+          {route.segments.map((seg, si) => {
+            const compact = route.width < COMPACT_BELOW;
+            const layers = [
+              ...(compact ? GLOW_LAYERS.slice(1) : GLOW_LAYERS).map((g) => ({ ...g, dx: 0, dy: 0 })),
+              ...(compact ? [] : STRANDS.map(([dx, dy, o]) => ({ w: 1, o, c: "#ffffff", dx, dy }))),
+            ];
+            return (
+              <g key={si} strokeLinecap="butt">
+                {layers.map((l, li) => (
+                  <path
+                    key={li}
+                    ref={(el) => {
+                      (drawn.current[si] ??= [])[li] = el as SVGPathElement;
+                    }}
+                    d={seg.d}
+                    pathLength={1}
+                    transform={l.dx || l.dy ? `translate(${l.dx} ${l.dy})` : undefined}
+                    stroke={l.c}
+                    strokeOpacity={l.o}
+                    strokeWidth={l.w}
+                    style={dash}
+                  />
+                ))}
+              </g>
+            );
+          })}
         </svg>
       )}
       {/* The ball riding the tip of the line. */}
@@ -321,7 +353,11 @@ export function StoryMap({ chapters }: { chapters: Chapter[] }) {
 
         <div ref={mark} className="relative mx-auto mt-[clamp(1rem,3vw,3rem)] h-[clamp(19rem,34vw,30rem)] w-[min(100%,clamp(19rem,34vw,30rem))]">
           <div aria-hidden className="absolute inset-[12%] rounded-full bg-[radial-gradient(closest-side,rgb(245_124_72/0.35),transparent)] blur-2xl" />
-          <JuktiMark3D reduceMotion={reduceMotion} />
+          <LogoMark
+            title=""
+            className={`absolute inset-0 m-auto w-[46%] text-flare transition-opacity duration-500 ${markReady ? "opacity-0" : "opacity-100"}`}
+          />
+          {webgl && idle && <JuktiMark3D reduceMotion={reduceMotion} onReady={() => setMarkReady(true)} />}
         </div>
         <p className="mt-2 text-[0.82rem] tracking-[0.14em] text-muted uppercase">
           <span className="max-md:hidden">Drag to spin · hover to open · click to scatter</span>

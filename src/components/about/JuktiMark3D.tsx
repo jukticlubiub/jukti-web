@@ -219,10 +219,15 @@ function Mark({ reduceMotion }: { reduceMotion: boolean }) {
   );
 }
 
-/** The interactive 3D mark, filling its parent. Renders only while on screen. */
-export default function JuktiMark3D({ reduceMotion = false }: { reduceMotion?: boolean }) {
+/**
+ * The interactive 3D mark, filling its parent. Renders only while on screen; `onReady` once
+ * its first frame is drawn. Phones render at most 1.5x (their screens are 2-3x): the glossy
+ * materials cost per pixel, and a smaller canvas keeps scrolling smooth.
+ */
+export default function JuktiMark3D({ reduceMotion = false, onReady }: { reduceMotion?: boolean; onReady?: () => void }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [coarse] = useState(() => window.matchMedia("(pointer: coarse)").matches);
 
   useEffect(() => {
     const el = wrapper.current;
@@ -235,8 +240,9 @@ export default function JuktiMark3D({ reduceMotion = false }: { reduceMotion?: b
   return (
     <div ref={wrapper} className="absolute inset-0 touch-pan-y">
       <Canvas
-        dpr={[1, 2]}
+        dpr={coarse ? [1, 1.5] : [1, 2]}
         frameloop={visible ? "always" : "never"}
+        onCreated={() => requestAnimationFrame(() => onReady?.())}
         camera={{ position: [0, 0, 8.4], fov: 30 }}
         gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
         aria-hidden

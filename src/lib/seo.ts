@@ -3,12 +3,16 @@ import { site } from "./site";
 
 export const siteTitle = `${site.name} · Club of CSE, IUB`;
 
-/** The site's default share picture (app/opengraph-image.tsx), for pages without their own. */
+/**
+ * The site's default share picture (Facebook, Messenger, WhatsApp, LinkedIn, X), for pages
+ * without their own: the Executive Board photo at 1200×630. To change it, add the new picture
+ * under a new file name: Facebook keeps a picture cached by its address.
+ */
 export const defaultShareImage = {
-  url: "/opengraph-image",
+  url: "/share/executive-board-2026-27.jpg",
   width: 1200,
   height: 630,
-  alt: "JUKTI, Club of CSE, IUB: the largest CSE student community at Independent University, Bangladesh",
+  alt: "JUKTI Executive Board 2026–27, Club of CSE, IUB",
 };
 
 /**

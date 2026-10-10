@@ -23,7 +23,7 @@ import { requestTime } from "@/lib/events/now";
 import { getEvent, getEventPhotos, getEvents } from "@/lib/events/queries";
 import { getRsvpState } from "@/lib/events/rsvp";
 import { eventSummary, formatDateRange, groupEvents } from "@/lib/events/time";
-import { pageMetadata } from "@/lib/seo";
+import { defaultShareImage, pageMetadata } from "@/lib/seo";
 import { categoryLabels, type JuktiEvent } from "@/lib/events/types";
 import { site } from "@/lib/site";
 
@@ -297,7 +297,7 @@ function structuredData(event: JuktiEvent, url: string) {
             addressCountry: "BD",
           },
         },
-    image: [event.cover?.url ?? `${site.url}/opengraph-image`],
+    image: [event.cover?.url ?? `${site.url}${defaultShareImage.url}`],
     url,
     organizer: { "@type": "Organization", name: site.fullName, url: site.url, logo: `${site.url}/brand/jukti-logo-512.png` },
   };

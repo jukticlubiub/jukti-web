@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { eclipseFragment, eclipseVertex } from "./eclipse-shader";
 import { HERO_TAIL, planetGeometry, ribWidth } from "./planet";
@@ -130,9 +130,12 @@ function EclipsePlane({ progress, still, onFirstFrame }: Omit<EclipseCanvasProps
 }
 
 export default function EclipseCanvas({ paused, still, ...rest }: EclipseCanvasProps) {
+  // Phones draw it at 1x: the lava and glow are soft anyway, and it's a full-screen shader
+  // (a 2-3x phone screen would mean several times the pixels every frame).
+  const [coarse] = useState(() => window.matchMedia("(pointer: coarse)").matches);
   return (
     <Canvas
-      dpr={[1, 1.5]}
+      dpr={coarse ? 1 : [1, 1.5]}
       flat
       frameloop={paused ? "never" : still ? "demand" : "always"}
       gl={{ antialias: false, alpha: false, depth: false, stencil: false, powerPreference: "high-performance" }}

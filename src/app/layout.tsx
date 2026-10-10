@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "lenis/dist/lenis.css";
-import { baseOpenGraph, siteTitle } from "@/lib/seo";
+import { baseOpenGraph, defaultShareImage, siteTitle } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { bodyFont, displayFont } from "./fonts";
 import "./globals.css";
@@ -14,7 +14,8 @@ export const metadata: Metadata = {
   description: site.description,
   applicationName: site.name,
   category: "education",
-  openGraph: baseOpenGraph,
+  // The share picture for pages that don't set their own (pages using pageMetadata always do).
+  openGraph: { ...baseOpenGraph, images: [defaultShareImage] },
   // Fixed addresses (in public/), not Next's generated icon routes, whose URLs change with every
   // build: Google wants a stable favicon URL before it shows the icon next to search results.
   icons: {
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: { card: "summary_large_image", images: [defaultShareImage] },
   // Google Search Console's "HTML tag" check, if the site is verified that way: set the code from the tag.
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };

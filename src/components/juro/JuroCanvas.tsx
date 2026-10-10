@@ -2,6 +2,7 @@
 
 import { Environment, Lightformer } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
+import { useState } from "react";
 import type { JuroBrain } from "./brain";
 import { JuroModel } from "./JuroModel";
 
@@ -11,9 +12,11 @@ import { JuroModel } from "./JuroModel";
  * The camera is far enough back that a raised or pointing arm fits on either side.
  */
 export default function JuroCanvas({ brain }: { brain: React.RefObject<JuroBrain> }) {
+  // At most 1.5x on phones: plenty for his size, and lighter on their graphics chips.
+  const [coarse] = useState(() => window.matchMedia("(pointer: coarse)").matches);
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={coarse ? [1, 1.5] : [1, 2]}
       // His box is scaled with a CSS transform: measure its layout size, not its size on screen.
       resize={{ offsetSize: true, scroll: false }}
       camera={{ position: [0, 0, 5.8], fov: 30 }}
