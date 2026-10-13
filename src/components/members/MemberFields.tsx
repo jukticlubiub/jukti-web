@@ -155,16 +155,19 @@ export function Choices({
 
 /**
  * How they paid, as the registration app asks: bKash (sender number, optional transaction
- * ID) or cash to an executive; either way the executive gives them a code to enter.
+ * ID) or cash to an executive. While verification is on (`codeRequired`, Admin > Members),
+ * the executive then gives them a code to enter.
  */
 export function PaymentFields({
   iubId,
   errors,
   defaults,
+  codeRequired,
 }: {
   iubId: string;
   errors: Record<string, string>;
   defaults?: { method?: string | null; sender?: string | null; txn?: string | null };
+  codeRequired: boolean;
 }) {
   const [method, setMethod] = useState(defaults?.method === "Cash" ? "Cash" : "Bkash");
   return (
@@ -185,8 +188,8 @@ export function PaymentFields({
         <>
           <div className="rounded-[14px] border border-flare/30 bg-lava/10 p-4 text-[0.95rem] leading-relaxed text-body">
             Send the registration fee to <strong className="font-semibold text-fg tabular-nums">{bkashNumber}</strong> (bKash, personal), with
-            your IUB ID <strong className="font-semibold text-fg tabular-nums">{iubId}</strong> as the reference. An executive will then give you
-            a code to enter below.
+            your IUB ID <strong className="font-semibold text-fg tabular-nums">{iubId}</strong> as the reference.{" "}
+            {codeRequired ? "An executive will then give you a code to enter below." : "An executive will then check your payment."}
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <TextInput label="bKash number you paid from" name="bkash_sender_number" type="tel" inputMode="tel" autoComplete="tel" placeholder="01XXXXXXXXX" defaultValue={defaults?.sender} error={errors.bkash_sender_number} />
@@ -203,18 +206,21 @@ export function PaymentFields({
         </>
       ) : (
         <p className="rounded-[14px] border border-glass-border bg-white/[0.03] p-4 text-[0.95rem] leading-relaxed text-body">
-          Hand the fee to a JUKTI executive. They’ll give you a code to enter below.
+          Hand the fee to a JUKTI executive.{" "}
+          {codeRequired ? "They’ll give you a code to enter below." : "They’ll mark your registration as paid."}
         </p>
       )}
 
-      <TextInput
-        label="Executive code"
-        name="executive_id"
-        type="password"
-        autoComplete="off"
-        placeholder="Given to you by an executive after you pay"
-        error={errors.executive_id}
-      />
+      {codeRequired && (
+        <TextInput
+          label="Executive code"
+          name="executive_id"
+          type="password"
+          autoComplete="off"
+          placeholder="Given to you by an executive after you pay"
+          error={errors.executive_id}
+        />
+      )}
     </>
   );
 }

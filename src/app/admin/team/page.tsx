@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { BoardTermForm, EditableItem, TeamMemberForm } from "@/components/admin/ContentForms";
+import { BoardTermForm, EditableItem, SortableList, TeamMemberForm } from "@/components/admin/ContentForms";
 import { PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { listTeamForAdmin } from "@/lib/admin/data/content";
@@ -42,13 +42,18 @@ async function Team() {
           const list = members.filter((m) => m.kind === g.kind);
           return (
             <Panel key={g.kind} title={g.title} description={g.description}>
-              <ul className="grid gap-2">
-                {list.map((m, i) => (
-                  <EditableItem key={m.id} table="team_members" kind={g.kind} id={m.id} title={m.name} subtitle={m.role} imageUrl={m.photoUrl} shown={m.active} first={i === 0} last={i === list.length - 1}>
-                    <TeamMemberForm member={m} live={live} />
-                  </EditableItem>
-                ))}
-              </ul>
+              <SortableList
+                table="team_members"
+                kind={g.kind}
+                items={list.map((m) => ({
+                  id: m.id,
+                  node: (
+                    <EditableItem table="team_members" id={m.id} title={m.name} subtitle={m.role} imageUrl={m.photoUrl} shown={m.active}>
+                      <TeamMemberForm member={m} live={live} />
+                    </EditableItem>
+                  ),
+                }))}
+              />
               <details className="mt-4 rounded-[14px] border border-dashed border-glass-border p-4">
                 <summary className="cursor-pointer text-[0.9rem] text-flare">Add {g.kind === "advisor" ? "an advisor" : "an executive"}</summary>
                 <div className="mt-4">

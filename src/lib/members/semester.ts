@@ -37,6 +37,15 @@ export function intakeLabel(id: string | null | undefined) {
   return intake ? `${TERM_NAMES[intake.code]} ${intake.year}` : null;
 }
 
+/** "Autumn 2026": the academic term running on a date (in Dhaka), e.g. when someone registered. */
+export function termLabel(date: Date | string | null | undefined) {
+  if (!date) return null;
+  const time = new Date(date).getTime();
+  if (Number.isNaN(time)) return null;
+  const dhaka = new Date(time + 6 * 60 * 60 * 1000);
+  return `${TERM_NAMES[termCodeForMonth(dhaka.getUTCMonth() + 1)]} ${dhaka.getUTCFullYear()}`;
+}
+
 /** "5th": which semester they're in now (in Dhaka), as the registration form fills it in. */
 export function currentSemester(id: string | null | undefined, now: Date) {
   const intake = id ? intakeOf(id) : null;

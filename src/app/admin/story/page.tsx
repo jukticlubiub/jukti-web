@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { ChapterForm, EditableItem } from "@/components/admin/ContentForms";
+import { ChapterForm, EditableItem, SortableList } from "@/components/admin/ContentForms";
 import { PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { listStoryForAdmin } from "@/lib/admin/data/content";
@@ -29,14 +29,18 @@ async function Story() {
         </a>
       </PageHeader>
       <div className="grid gap-8">
-        <ul className="grid gap-2">
-          {chapters.map((c, i) => (
-            <EditableItem key={c.id} table="story_chapters" id={c.id} title={`${String(i + 1).padStart(2, "0")}. ${c.title}`} subtitle={c.kicker} imageUrl={c.photoUrl} shown={c.published} first={i === 0} last={i === chapters.length - 1}>
-              <ChapterForm chapter={c} live={live} />
-            </EditableItem>
-          ))}
-        </ul>
-        <Panel title="Add a chapter" description="It’s added at the end; move it into place afterwards.">
+        <SortableList
+          table="story_chapters"
+          items={chapters.map((c, i) => ({
+            id: c.id,
+            node: (
+              <EditableItem table="story_chapters" id={c.id} title={`${String(i + 1).padStart(2, "0")}. ${c.title}`} subtitle={c.kicker} imageUrl={c.photoUrl} shown={c.published}>
+                <ChapterForm chapter={c} live={live} />
+              </EditableItem>
+            ),
+          }))}
+        />
+        <Panel title="Add a chapter" description="It’s added at the end; drag it into place afterwards.">
           <ChapterForm live={live} />
         </Panel>
       </div>

@@ -54,6 +54,8 @@ export function AvatarField({ userId, name, defaultUrl, live, error }: { userId:
       const blob = await fit(result);
       if (!live) {
         setShown(URL.createObjectURL(blob));
+        // Not uploaded in preview; a stand-in address, since a photo is required.
+        setUrl("https://example.com/preview-photo.webp");
         return;
       }
       const supabase = createBrowserSupabase();
@@ -73,7 +75,9 @@ export function AvatarField({ userId, name, defaultUrl, live, error }: { userId:
 
   return (
     <div>
-      <p className="mb-1.5 text-[0.85rem] text-muted">Photo</p>
+      <p className="mb-1.5 text-[0.85rem] text-muted">
+        Photo <span className="text-[0.75rem]">(required)</span>
+      </p>
       <input type="hidden" name="photo_url" value={url} />
       <div className="flex items-center gap-4">
         <Avatar name={name} url={shown || null} className="size-20 text-[3rem]" />
@@ -83,20 +87,8 @@ export function AvatarField({ userId, name, defaultUrl, live, error }: { userId:
               {busy ? "Uploading…" : shown ? "Change photo" : "Add a photo"}
             </label>
             <input ref={fileRef} id={id} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
-            {shown && !busy && (
-              <button
-                type="button"
-                onClick={() => {
-                  setUrl("");
-                  setShown("");
-                }}
-                className="text-[0.82rem] text-muted hover:text-fg"
-              >
-                Remove
-              </button>
-            )}
           </div>
-          <p className="text-[0.78rem] text-muted">A clear photo of your face. You’ll crop it to a circle; it’s saved under 1 MB.</p>
+          <p className="text-[0.78rem] text-muted">A clear photo of your face (every member needs one). You’ll crop it to a circle; it’s saved under 1 MB.</p>
         </div>
       </div>
       {!live && shown && <p className="mt-2 text-[0.8rem] text-sky-200">Preview mode: shown here, but not uploaded (that needs Supabase).</p>}

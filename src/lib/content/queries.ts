@@ -129,6 +129,16 @@ export async function getRegistrationOpen(): Promise<boolean> {
   return saved?.open !== false;
 }
 
+/** Whether registering asks for the code an executive gives after payment (on unless switched off in Admin > Members). */
+export async function getExecutiveCodeRequired(): Promise<boolean> {
+  "use cache";
+  cacheTag(SETTINGS_TAG);
+  cacheLife("hours");
+  if (!supabaseEnv) return true;
+  const saved = await setting<{ required?: boolean }>("members.verification");
+  return saved?.required !== false;
+}
+
 export type MemorialContent = {
   tribute: string[];
   farewell: string;

@@ -8,6 +8,7 @@ import { ProfileForm } from "@/components/members/ProfileForm";
 import { ArrowIcon } from "@/components/ui/icons";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/cn";
+import { getExecutiveCodeRequired } from "@/lib/content/queries";
 import { requireMember } from "@/lib/members/account";
 import { requestTime } from "@/lib/events/now";
 import { resetPreview, setPreviewStatus } from "@/lib/members/actions";
@@ -30,7 +31,7 @@ export default function AccountPage({ searchParams }: PageProps<"/account">) {
 }
 
 async function AccountBody({ searchParams }: Pick<PageProps<"/account">, "searchParams">) {
-  const [{ mode, user, member }, params, now] = await Promise.all([requireMember(), searchParams, requestTime()]);
+  const [{ mode, user, member }, params, now, codeRequired] = await Promise.all([requireMember(), searchParams, requestTime(), getExecutiveCodeRequired()]);
   const live = mode === "live";
   const missing = [!member.secondaryEmail && "a personal email", !member.photoUrl && "a photo"].filter(Boolean) as string[];
 
@@ -96,7 +97,7 @@ async function AccountBody({ searchParams }: Pick<PageProps<"/account">, "search
         )}
 
         <div className="glass-card p-6 sm:p-9">
-          <ProfileForm member={member} live={live} />
+          <ProfileForm member={member} live={live} codeRequired={codeRequired} />
         </div>
 
         {mode === "preview" && <PreviewTools current={member.status} />}

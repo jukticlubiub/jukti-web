@@ -64,24 +64,40 @@ export async function deleteRow(previous: ActionState, fd: FormData): Promise<Ac
   return ok(previous, "Deleted.");
 }
 
-/** Move a row up or down in its list (within `kind` for the team). */
-export async function moveRow(previous: ActionState, fd: FormData): Promise<ActionState> {
+/**
+ * Save a list's new order (dragged into place): `ids` is every row of the list (within `kind`
+ * for the team and alumni) in its new order. Refused if it doesn't match the list as saved,
+ * e.g. someone else added or deleted a row meanwhile.
+ */
+export async function reorderRows(previous: ActionState, fd: FormData): Promise<ActionState> {
   const table = str(fd, "table");
   if (!isListTable(table)) return failed("Unknown list.");
   const cfg = lists[table];
   const g = await guard(cfg.area);
   if (!g.ok) return g.state;
+  let ids: unknown;
+  try {
+    ids = JSON.parse(str(fd, "ids"));
+  } catch {
+    return failed("The new order couldn’t be read.");
+  }
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === "string")) return failed("The new order couldn’t be read.");
   let q = g.db.from(table).select("id, position").order("position");
   if (table === "team_members" || (table === "alumni" && str(fd, "kind"))) q = q.eq("kind", str(fd, "kind"));
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) return failed(explainDbError(error.message));
   const list = (data as { id: string; position: number }[] | null) ?? [];
-  const i = list.findIndex((r) => r.id === str(fd, "id"));
-  const j = str(fd, "direction") === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= list.length) return ok(previous, "");
-  [list[i], list[j]] = [list[j], list[i]];
-  for (const [position, r] of list.entries()) if (r.position !== position) await g.db.from(table).update({ position }).eq("id", r.id);
+  const saved = new Map(list.map((r) => [r.id, r.position]));
+  if (ids.length !== list.length || new Set(ids).size !== ids.length || !ids.every((id) => saved.has(id))) {
+    return failed("The list changed meanwhile. Reload the page and try again.");
+  }
+  for (const [position, id] of (ids as string[]).entries()) {
+    if (saved.get(id) === position) continue;
+    const { error: updateError } = await g.db.from(table).update({ position }).eq("id", id);
+    if (updateError) return failed(explainDbError(updateError.message));
+  }
   updateTag(cfg.tag);
-  return ok(previous, "Moved.");
+  return ok(previous, "Order saved.");
 }
 
 async function nextPosition(db: Awaited<ReturnType<typeof import("@/lib/supabase/server").createSessionClient>>, table: ListTable, kind?: string) {

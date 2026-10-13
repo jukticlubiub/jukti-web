@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { DeveloperForm, EditableItem } from "@/components/admin/ContentForms";
+import { DeveloperForm, EditableItem, SortableList } from "@/components/admin/ContentForms";
 import { PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { listDevelopersForAdmin } from "@/lib/admin/data/content";
@@ -29,13 +29,17 @@ async function Developers() {
         </a>
       </PageHeader>
       <div className="grid gap-8">
-        <ul className="grid gap-2">
-          {developers.map((d, i) => (
-            <EditableItem key={d.id} table="developers" id={d.id} title={d.name} subtitle={`${d.role} · ${d.designation}`} imageUrl={d.photoUrl} shown={d.active} first={i === 0} last={i === developers.length - 1}>
-              <DeveloperForm developer={d} live={live} />
-            </EditableItem>
-          ))}
-        </ul>
+        <SortableList
+          table="developers"
+          items={developers.map((d) => ({
+            id: d.id,
+            node: (
+              <EditableItem table="developers" id={d.id} title={d.name} subtitle={`${d.role} · ${d.designation}`} imageUrl={d.photoUrl} shown={d.active}>
+                <DeveloperForm developer={d} live={live} />
+              </EditableItem>
+            ),
+          }))}
+        />
         <Panel title="Add a developer">
           <DeveloperForm live={live} />
         </Panel>

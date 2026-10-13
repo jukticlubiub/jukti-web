@@ -10,7 +10,7 @@ import { GoogleSignIn } from "@/components/ui/GoogleSignIn";
 import { ArrowIcon, CalendarIcon, FacebookIcon, IdCardIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
 import { Reveal } from "@/components/ui/Reveal";
 import { signOut } from "@/lib/auth/actions";
-import { getRegistrationOpen, getSocials } from "@/lib/content/queries";
+import { getExecutiveCodeRequired, getRegistrationOpen, getSocials } from "@/lib/content/queries";
 import { getAccount } from "@/lib/members/account";
 import { requestTime } from "@/lib/events/now";
 import { currentSemester, intakeLabel } from "@/lib/members/semester";
@@ -43,7 +43,13 @@ export default function JoinPage({ searchParams }: PageProps<"/join">) {
 }
 
 async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams">) {
-  const [{ mode, user, member }, params, now, open] = await Promise.all([getAccount(), searchParams, requestTime(), getRegistrationOpen()]);
+  const [{ mode, user, member }, params, now, open, codeRequired] = await Promise.all([
+    getAccount(),
+    searchParams,
+    requestTime(),
+    getRegistrationOpen(),
+    getExecutiveCodeRequired(),
+  ]);
   // Already registered (including through the old registration app): straight to the account.
   if (member) redirect("/account");
 
@@ -125,6 +131,7 @@ async function JoinBody({ searchParams }: Pick<PageProps<"/join">, "searchParams
         semester={currentSemester(user.iubId, new Date(now))}
         intake={intakeLabel(user.iubId)}
         live={mode === "live"}
+        codeRequired={codeRequired}
       />
       {mode === "preview" && (
         <p className="mt-8 text-[0.8rem] leading-relaxed text-muted">

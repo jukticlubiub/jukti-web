@@ -1,25 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
-import { moderateMember, saveExecutive, setRegistrationOpen, updateImport } from "@/lib/admin/actions/members";
+import { useActionState, useId } from "react";
+import { moderateMember, saveExecutive, setExecutiveCodeRequired, setRegistrationOpen, updateImport } from "@/lib/admin/actions/members";
 import type { ActionState } from "@/lib/admin/form";
 import { cn } from "@/lib/cn";
 import type { Member } from "@/lib/members/types";
 import { AdminForm, TextField, Toggle } from "./forms";
 
-/** Admin > Members: the switch that opens or closes registration on /join. Flips straight away. */
-export function RegistrationSwitch({ open }: { open: boolean }) {
-  const [state, formAction, pending] = useActionState(setRegistrationOpen, { status: "idle" } as ActionState);
+/** An on/off setting that flips straight away when clicked, with what each state means. */
+function SettingSwitch({
+  on: saved,
+  field,
+  action,
+  label,
+  hint,
+}: {
+  on: boolean;
+  /** The form field the action reads ("true" or "false"). */
+  field: string;
+  action: (previous: ActionState, fd: FormData) => Promise<ActionState>;
+  label: (on: boolean) => string;
+  hint: (on: boolean) => string;
+}) {
+  const [state, formAction, pending] = useActionState(action, { status: "idle" } as ActionState);
   // While saving, show where it's going.
-  const on = pending ? !open : open;
+  const on = pending ? !saved : saved;
+  const labelId = useId();
   return (
     <form action={formAction} className="flex items-center gap-4">
-      <input type="hidden" name="open" value={String(!open)} />
+      <input type="hidden" name={field} value={String(!saved)} />
       <button
         type="submit"
         role="switch"
         aria-checked={on}
-        aria-labelledby="registration-state"
+        aria-labelledby={labelId}
         disabled={pending}
         className={cn(
           "relative h-8 w-14 shrink-0 cursor-pointer rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-flare disabled:cursor-wait",
@@ -29,14 +43,10 @@ export function RegistrationSwitch({ open }: { open: boolean }) {
         <span aria-hidden className={cn("absolute top-[3px] left-[3px] size-6 rounded-full bg-white shadow-md transition-transform", on && "translate-x-6")} />
       </button>
       <div className="min-w-0">
-        <p id="registration-state" className="font-medium text-fg">
-          {on ? "Registration is open" : "Registration is closed"}
+        <p id={labelId} className="font-medium text-fg">
+          {label(on)}
         </p>
-        <p className="mt-0.5 text-[0.88rem] leading-relaxed text-muted">
-          {on
-            ? "Students can register on the Join page."
-            : "The Join page says we’re not recruiting members this semester and points to our Facebook page. Members can still sign in."}
-        </p>
+        <p className="mt-0.5 text-[0.88rem] leading-relaxed text-muted">{hint(on)}</p>
         {state.status === "error" && state.message && (
           <p role="alert" className="mt-1 text-[0.85rem] text-[#ffb4a6]">
             {state.message}
@@ -44,6 +54,40 @@ export function RegistrationSwitch({ open }: { open: boolean }) {
         )}
       </div>
     </form>
+  );
+}
+
+/** Admin > Members: the switch that opens or closes registration on /join. */
+export function RegistrationSwitch({ open }: { open: boolean }) {
+  return (
+    <SettingSwitch
+      on={open}
+      field="open"
+      action={setRegistrationOpen}
+      label={(on) => (on ? "Registration is open" : "Registration is closed")}
+      hint={(on) =>
+        on
+          ? "Students can register on the Join page."
+          : "The Join page says we’re not recruiting members this semester and points to our Facebook page. Members can still sign in."
+      }
+    />
+  );
+}
+
+/** Admin > Members: whether registering asks for the code an executive gives after payment. */
+export function VerificationSwitch({ required }: { required: boolean }) {
+  return (
+    <SettingSwitch
+      on={required}
+      field="required"
+      action={setExecutiveCodeRequired}
+      label={(on) => (on ? "Executive code required" : "No executive code needed")}
+      hint={(on) =>
+        on
+          ? "After paying, students enter the code an executive gives them. Wrong codes are refused."
+          : "Students register without a code. Check each payment yourself before approving."
+      }
+    />
   );
 }
 

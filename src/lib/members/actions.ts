@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type ActionState, failed, fieldErrors, ok } from "@/lib/admin/form";
-import { getRegistrationOpen } from "@/lib/content/queries";
+import { getExecutiveCodeRequired, getRegistrationOpen } from "@/lib/content/queries";
 import { createSessionClient } from "@/lib/supabase/server";
 import { getAccount, memberMode, readPreviewMember, writePreviewMember } from "./account";
 import { type MemberStatus, memberStatuses } from "./options";
@@ -36,7 +36,7 @@ const profileSchema = z.object({
     .trim()
     .toLowerCase()
     .refine((v) => !v.endsWith("@iub.edu.bd"), "Use a personal address, not your IUB one: you'll lose IUB email after graduation."),
-  photo_url: z.string().trim().max(500),
+  photo_url: z.string().trim().min(1, "Add a photo of yourself.").max(500),
   fields_of_interest: z.array(z.string().trim().min(1).max(80)).max(12),
   co_curricular: z.array(z.string().trim().min(1).max(80)).max(12),
 });
@@ -50,22 +50,26 @@ const extrasSchema = z.object({
   hide_from_public: z.boolean(),
 });
 
-const paymentSchema = z
-  .object({
-    payment_method: z.enum(["Bkash", "Cash"], "Choose how you paid."),
-    bkash_sender_number: z.string().transform((v) => v.replace(/[\s-]/g, "")),
-    bkash_transaction_id: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .refine((v) => v === "" || /^[A-Z0-9]{8,12}$/.test(v), "A bKash transaction ID is 8–12 letters and numbers."),
-    executive_id: z.string().trim().min(1, "Enter the code an executive gave you after you paid.").max(40),
-  })
-  .superRefine((v, ctx) => {
-    if (v.payment_method === "Bkash" && !/^(\+?88)?01[3-9]\d{8}$/.test(v.bkash_sender_number)) {
-      ctx.addIssue({ code: "custom", path: ["bkash_sender_number"], message: "Enter the bKash number you paid from." });
-    }
-  });
+/** How they paid. The executive's code is asked for only while verification is on (Admin > Members). */
+const paymentSchema = (codeRequired: boolean) =>
+  z
+    .object({
+      payment_method: z.enum(["Bkash", "Cash"], "Choose how you paid."),
+      bkash_sender_number: z.string().transform((v) => v.replace(/[\s-]/g, "")),
+      bkash_transaction_id: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .refine((v) => v === "" || /^[A-Z0-9]{8,12}$/.test(v), "A bKash transaction ID is 8–12 letters and numbers."),
+      executive_id: codeRequired
+        ? z.string().trim().min(1, "Enter the code an executive gave you after you paid.").max(40)
+        : z.string().trim().max(40),
+    })
+    .superRefine((v, ctx) => {
+      if (v.payment_method === "Bkash" && !/^(\+?88)?01[3-9]\d{8}$/.test(v.bkash_sender_number)) {
+        ctx.addIssue({ code: "custom", path: ["bkash_sender_number"], message: "Enter the bKash number you paid from." });
+      }
+    });
 
 /** Checked boxes plus the "Other" text box. */
 function choices(fd: FormData, key: string) {
@@ -114,6 +118,7 @@ const dbErrors: Record<string, [field: string, message: string]> = {
   invalid_blood_group: ["blood_group", "Choose a blood group."],
   invalid_secondary_email: ["secondary_email", "Enter a personal email address."],
   secondary_email_is_iub: ["secondary_email", "Use a personal address, not your IUB one."],
+  photo_required: ["photo_url", "Add a photo of yourself."],
   invalid_photo: ["photo_url", "That photo couldn't be used. Upload it again."],
   too_many_choices: ["form", "Choose up to 12 in each list."],
   invalid_payment: ["bkash_sender_number", "Check the payment details."],
@@ -137,7 +142,7 @@ const CHECK_FORM = "Some details need fixing. Check the highlighted fields.";
 /** Registering on /join. Signed in with an IUB student account, and not registered yet. */
 export async function registerMember(_previous: ActionState, fd: FormData): Promise<ActionState> {
   const profile = profileSchema.safeParse(readProfile(fd));
-  const payment = paymentSchema.safeParse(readPayment(fd));
+  const payment = paymentSchema(await getExecutiveCodeRequired()).safeParse(readPayment(fd));
   if (!profile.success || !payment.success) {
     return failed(CHECK_FORM, { ...(profile.success ? {} : fieldErrors(profile.error)), ...(payment.success ? {} : fieldErrors(payment.error)) });
   }
@@ -178,7 +183,7 @@ export async function updateProfile(previous: ActionState, fd: FormData): Promis
     hide_from_public: fd.get("hide_from_public") === "on",
   });
   const resubmitting = fd.has("payment_method");
-  const payment = resubmitting ? paymentSchema.safeParse(readPayment(fd)) : null;
+  const payment = resubmitting ? paymentSchema(await getExecutiveCodeRequired()).safeParse(readPayment(fd)) : null;
   if (!profile.success || !extras.success || (payment && !payment.success)) {
     return failed(CHECK_FORM, {
       ...(profile.success ? {} : fieldErrors(profile.error)),

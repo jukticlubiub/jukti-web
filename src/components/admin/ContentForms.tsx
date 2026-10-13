@@ -1,8 +1,11 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- admin thumbnails from any host */
-import { useState } from "react";
-import { deleteRow, moveRow, saveAlumnus, saveBoardTerm, saveChapter, saveDeveloper, saveMemorial, saveSocials, saveTeamMember, setShown } from "@/lib/admin/actions/content";
+import { closestCenter, DndContext, type DragEndEvent, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Fragment, useId, useState, useTransition } from "react";
+import { deleteRow, reorderRows, saveAlumnus, saveBoardTerm, saveChapter, saveDeveloper, saveMemorial, saveSocials, saveTeamMember, setShown } from "@/lib/admin/actions/content";
 import { imagePresets } from "@/lib/admin/image-presets";
 import type { AdminAlumnus, AdminChapter, AdminDeveloper, AdminTeamMember } from "@/lib/admin/data/content";
 import type { MemorialContent, Socials } from "@/lib/content/queries";
@@ -12,37 +15,137 @@ import { type Cropped, ImageCropper } from "./ImageCropper";
 import { ImageField, uploadBlob } from "./ImageField";
 import { Pill } from "./ui";
 
-/** One row of an ordered list: thumbnail, title, Edit (opens the form), show/hide, up/down. */
+type ListTable = "team_members" | "alumni" | "story_chapters" | "developers";
+
+/** Drag sensors shared by the admin's sortable lists and the event gallery. */
+export function useDragSensors() {
+  return useSensors(
+    // A small move before a drag starts, so clicks on the handle still work.
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    // On touch, press and hold, so swiping over the list still scrolls the page.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+}
+
+/** The ⋮⋮ handle that drags an item (also: focus it, Space to pick up, arrows to move, Space to drop). */
+export function DragHandle({ label, className, ...props }: { label: string; className?: string } & React.ButtonHTMLAttributes<HTMLButtonElement> & { ref?: React.Ref<HTMLButtonElement> }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title="Drag to reorder"
+      className={cn(
+        "grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-full text-muted transition-colors hover:bg-white/[0.06] hover:text-fg focus-visible:outline-2 focus-visible:outline-flare active:cursor-grabbing",
+        className,
+      )}
+      {...props}
+    >
+      <svg aria-hidden viewBox="0 0 12 18" className="h-4 w-3 fill-current">
+        {[3, 9].flatMap((x) => [3, 9, 15].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.6" />))}
+      </svg>
+    </button>
+  );
+}
+
+/** A note under a sortable list or gallery: "Order saved." or why it wasn't. */
+export function OrderStatus({ status }: { status: { tone: "ok" | "error"; text: string } | null }) {
+  if (!status) return null;
+  return (
+    <p role="status" className={cn("mt-2 text-[0.85rem]", status.tone === "ok" ? "text-emerald-300" : "text-[#ff8f7a]")}>
+      {status.text}
+    </p>
+  );
+}
+
+/**
+ * An ordered admin list whose items (EditableItems) are dragged into place by their handle.
+ * The new order shows at once and is saved in one go; if saving fails, it goes back.
+ */
+export function SortableList({ table, kind, items }: { table: ListTable; kind?: string; items: { id: string; node: React.ReactNode }[] }) {
+  const ids = items.map((i) => i.id);
+  const [order, setOrder] = useState(ids);
+  // The page's list changed (an item added or deleted, or the saved order came back): follow it.
+  const [synced, setSynced] = useState(ids.join(","));
+  if (ids.join(",") !== synced) {
+    setSynced(ids.join(","));
+    setOrder(ids);
+  }
+  const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [, startTransition] = useTransition();
+  const sensors = useDragSensors();
+  const nodes = new Map(items.map((i) => [i.id, i.node]));
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const before = order;
+    const next = arrayMove(order, order.indexOf(String(active.id)), order.indexOf(String(over.id)));
+    setOrder(next);
+    setStatus(null);
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("table", table);
+      if (kind) fd.set("kind", kind);
+      fd.set("ids", JSON.stringify(next));
+      const result = await reorderRows({ status: "idle" }, fd);
+      if (result.status === "error") {
+        setOrder(before);
+        setStatus({ tone: "error", text: result.message ?? "The new order couldn’t be saved." });
+      } else {
+        setStatus({ tone: "ok", text: "Order saved." });
+      }
+    });
+  };
+
+  return (
+    <DndContext id={useId()} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={order} strategy={verticalListSortingStrategy}>
+        <ul className="grid gap-2">
+          {order.map((id) => (
+            <Fragment key={id}>{nodes.get(id)}</Fragment>
+          ))}
+        </ul>
+      </SortableContext>
+      <OrderStatus status={status} />
+    </DndContext>
+  );
+}
+
+/** One row of an ordered list (inside a SortableList): drag handle, thumbnail, title, show/hide, Edit (opens the form). */
 export function EditableItem({
   table,
   id,
-  kind,
   title,
   subtitle,
   imageUrl,
   shown,
-  first,
-  last,
   deletable = false,
   children,
 }: {
-  table: "team_members" | "alumni" | "story_chapters" | "developers";
+  table: ListTable;
   id: string;
-  kind?: string;
   title: string;
   subtitle?: string;
   imageUrl?: string | null;
   shown: boolean;
-  first: boolean;
-  last: boolean;
   /** Offer "Delete" (for good, after a confirmation) next to Hide. */
   deletable?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
-    <li className={cn("rounded-[16px] border bg-white/[0.02]", shown ? "border-glass-border" : "border-dashed border-glass-border opacity-75")}>
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        "rounded-[16px] border bg-white/[0.02]",
+        shown ? "border-glass-border" : "border-dashed border-glass-border opacity-75",
+        isDragging && "relative z-10 border-flare/60 bg-[#1a100c] opacity-100 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.8)]",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-3 py-3 pr-4 pl-2">
+        <DragHandle ref={setActivatorNodeRef} label={`Move ${title}`} {...attributes} {...listeners} />
         <span className="relative size-11 shrink-0 overflow-hidden rounded-full border border-glass-border bg-white/[0.04]">
           {imageUrl && <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover" />}
         </span>
@@ -52,8 +155,6 @@ export function EditableItem({
         </div>
         {!shown && <Pill>Hidden</Pill>}
         <div className="flex flex-wrap gap-1.5">
-          <ActionButton action={moveRow} fields={{ table, id, direction: "up", ...(kind ? { kind } : {}) }} label="↑" className={first ? "invisible" : undefined} />
-          <ActionButton action={moveRow} fields={{ table, id, direction: "down", ...(kind ? { kind } : {}) }} label="↓" className={last ? "invisible" : undefined} />
           <ActionButton action={setShown} fields={{ table, id, shown: String(!shown) }} label={shown ? "Hide" : "Show"} />
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="h-8 rounded-full border border-glass-border px-3 text-[0.8rem] text-body hover:text-fg">
             {open ? "Close" : "Edit"}

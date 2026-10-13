@@ -17,6 +17,7 @@ export function JoinForm({
   semester,
   intake,
   live,
+  codeRequired,
 }: {
   userId: string;
   googleName: string;
@@ -25,6 +26,8 @@ export function JoinForm({
   semester: string;
   intake: string | null;
   live: boolean;
+  /** Whether the executive's code is asked for (Admin > Members). */
+  codeRequired: boolean;
 }) {
   return (
     <MemberForm action={registerMember} className="grid gap-9">
@@ -75,7 +78,7 @@ export function JoinForm({
             </Section>
 
             <Section title="Registration fee">
-              <PaymentFields iubId={iubId} errors={e} />
+              <PaymentFields iubId={iubId} errors={e} codeRequired={codeRequired} />
             </Section>
 
             <Section title="Anything else?">

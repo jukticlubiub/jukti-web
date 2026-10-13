@@ -219,6 +219,18 @@ export async function setRegistrationOpen(previous: ActionState, fd: FormData): 
   return ok(previous, open ? "Registration is open." : "Registration is closed.");
 }
 
+/** Turn the executive's code on /join on or off (Admin > Members). */
+export async function setExecutiveCodeRequired(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("members");
+  if (!g.ok) return g.state;
+  const required = str(fd, "required") === "true";
+  const { error } = await g.db.from("site_settings").upsert({ key: "members.verification", value: { required } });
+  if (error) return failed(explainDbError(error.message));
+  updateTag(SETTINGS_TAG);
+  refresh();
+  return ok(previous, required ? "The executive code is required." : "No executive code needed.");
+}
+
 /* ---------- Moderating what members show publicly ---------- */
 
 /** Fix a member's name or department, take them off the public list or directory, or remove their photo or bio. */

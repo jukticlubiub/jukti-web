@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ActionButton, inputClass } from "@/components/admin/forms";
-import { ImportEditForm, RegistrationSwitch } from "@/components/admin/MemberAdminForms";
+import { ImportEditForm, RegistrationSwitch, VerificationSwitch } from "@/components/admin/MemberAdminForms";
 import { removeImport, setImportHidden } from "@/lib/admin/actions/members";
 import { Cell, Empty, formatWhen, PageHeader, PageSkeleton, Panel, Pill, Row, Table } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { getExecutiveNames, type ImportedMember, listImportsForAdmin, listMembersForAdmin } from "@/lib/admin/data/members";
 import { cn } from "@/lib/cn";
-import { getRegistrationOpen } from "@/lib/content/queries";
+import { getExecutiveCodeRequired, getRegistrationOpen } from "@/lib/content/queries";
+import { requestTime } from "@/lib/events/now";
 import { memberStatuses, statusInfo, statusPillTone as pillTone } from "@/lib/members/options";
-import { intakeLabel } from "@/lib/members/semester";
+import { currentSemester, intakeLabel, termLabel } from "@/lib/members/semester";
 import type { Member } from "@/lib/members/types";
 
 // Signed out, the layout shows the sign-in screen instead of this page (see admin/layout.tsx).
@@ -33,14 +34,18 @@ function matches(m: Member, q: string) {
 
 async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "searchParams">) {
   const admin = await requireArea("members");
-  const [params, members, executives, imported, registrationOpen] = await Promise.all([
+  const [params, members, executives, imported, registrationOpen, codeRequired, now] = await Promise.all([
     searchParams,
     listMembersForAdmin(admin),
     getExecutiveNames(admin),
     listImportsForAdmin(admin),
     getRegistrationOpen(),
+    getExecutiveCodeRequired(),
+    requestTime(),
   ]);
-  if (params.show === "imported") return <Imported imported={imported} executives={executives} counts={counts(members, imported)} q={typeof params.q === "string" ? params.q.trim().toLowerCase() : ""} />;
+  if (params.show === "imported") {
+    return <Imported imported={imported} executives={executives} counts={counts(members, imported)} q={typeof params.q === "string" ? params.q.trim().toLowerCase() : ""} now={now} />;
+  }
   const tab = memberStatuses.find((s) => s === params.show) ?? "pending";
   const q = typeof params.q === "string" ? params.q.trim().toLowerCase() : "";
   const shown = members.filter((m) => m.status === tab && (!q || matches(m, q)));
@@ -59,9 +64,14 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
         </a>
       </PageHeader>
       <Panel className="mb-5">
-        <RegistrationSwitch open={registrationOpen} />
+        <div className="grid gap-5">
+          <RegistrationSwitch open={registrationOpen} />
+          <div className="border-t border-glass-border pt-5">
+            <VerificationSwitch required={codeRequired} />
+          </div>
+        </div>
       </Panel>
-      {executives.size === 0 && (
+      {executives.size === 0 && codeRequired && (
         <p className="mb-5 rounded-[14px] border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-[0.92rem] text-body">
           No executive codes are set up, so new registrations can enter any code.{" "}
           <Link href="/admin/members/executives" className="text-flare underline-offset-4 hover:underline">
@@ -75,7 +85,7 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
       {shown.length === 0 ? (
         <Empty title={q ? "No one matches" : tab === "pending" ? "Nothing to review" : "No one here"} />
       ) : (
-        <Table head={["Member", "IUB ID", "Payment", "Executive", "Registered", ""]}>
+        <Table head={["Member", "IUB ID", "Semester", "Payment", "Executive", "Registered", ""]}>
           {shown.map((m) => (
             <Row key={m.id}>
               <Cell>
@@ -88,6 +98,7 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
                 <span className="tabular-nums">{m.iubId}</span>
                 <span className="block text-[0.82rem] text-muted">{intakeLabel(m.iubId)}</span>
               </Cell>
+              <SemesterCell iubId={m.iubId} joinedAt={m.createdAt} now={now} />
               <Cell label="Payment">
                 {m.paymentMethod === "Bkash" ? (
                   <>
@@ -146,7 +157,22 @@ function Filters({ tab, q, counts }: { tab: Tab; q: string; counts: Record<Tab, 
 }
 
 /** Members from the registration app's export who haven't signed in here yet (they're approved; signing in claims it). */
-function Imported({ imported, executives, counts, q }: { imported: ImportedMember[]; executives: Map<string, string>; counts: Record<Tab, number>; q: string }) {
+/**
+ * The semester they're in now (worked out from their IUB ID, as the registration app does) and
+ * the academic term that was running when they joined.
+ */
+function SemesterCell({ iubId, joinedAt, now }: { iubId: string | null; joinedAt: string | null; now: number }) {
+  const current = currentSemester(iubId, new Date(now));
+  const joined = termLabel(joinedAt);
+  return (
+    <Cell label="Semester">
+      {current ? <span>{current} semester</span> : "—"}
+      {joined && <span className="block text-[0.82rem] text-muted">Joined {joined}</span>}
+    </Cell>
+  );
+}
+
+function Imported({ imported, executives, counts, q, now }: { imported: ImportedMember[]; executives: Map<string, string>; counts: Record<Tab, number>; q: string; now: number }) {
   const shown = imported.filter((m) => !q || [m.name, m.email, m.iubId, m.memberNo, m.bkashSenderNumber, m.bkashTransactionId].join(" ").toLowerCase().includes(q));
   return (
     <>
@@ -158,7 +184,7 @@ function Imported({ imported, executives, counts, q }: { imported: ImportedMembe
       {shown.length === 0 ? (
         <Empty title="No one matches" />
       ) : (
-        <Table head={["Member", "IUB ID", "Payment", "Executive", "Registered", ""]}>
+        <Table head={["Member", "IUB ID", "Semester", "Payment", "Executive", "Registered", ""]}>
           {shown.map((m) => (
             <Row key={m.email}>
               <Cell>
@@ -171,6 +197,7 @@ function Imported({ imported, executives, counts, q }: { imported: ImportedMembe
               <Cell label="IUB ID">
                 <span className="tabular-nums">{m.iubId ?? "—"}</span>
               </Cell>
+              <SemesterCell iubId={m.iubId} joinedAt={m.registeredAt} now={now} />
               <Cell label="Payment">
                 {m.paymentMethod ?? "—"} {m.bkashSenderNumber && <span className="text-muted tabular-nums">{m.bkashSenderNumber}</span>}
               </Cell>

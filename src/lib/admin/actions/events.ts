@@ -283,21 +283,31 @@ export async function updatePhoto(previous: ActionState, fd: FormData): Promise<
 }
 
 /** Swaps a photo with its neighbour (`direction` up or down). */
-export async function movePhoto(previous: ActionState, fd: FormData): Promise<ActionState> {
+/** Save a gallery's new order (dragged into place): `ids` is every photo of the event, in order. */
+export async function reorderPhotos(previous: ActionState, fd: FormData): Promise<ActionState> {
   const g = await guard(isPR);
   if (!g.ok) return g.state;
-  const { data } = await g.db.from("event_photos").select("id, position").eq("event_id", str(fd, "eventId")).order("position");
+  let ids: unknown;
+  try {
+    ids = JSON.parse(str(fd, "ids"));
+  } catch {
+    return failed("The new order couldn’t be read.");
+  }
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === "string")) return failed("The new order couldn’t be read.");
+  const { data, error } = await g.db.from("event_photos").select("id, position").eq("event_id", str(fd, "eventId")).order("position");
+  if (error) return failed(explainDbError(error.message));
   const list = (data as { id: string; position: number }[] | null) ?? [];
-  const i = list.findIndex((p) => p.id === str(fd, "id"));
-  const j = str(fd, "direction") === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= list.length) return ok(previous, "");
-  const reordered = [...list];
-  [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
-  for (const [position, p] of reordered.entries()) {
-    if (p.position !== position) await g.db.from("event_photos").update({ position }).eq("id", p.id);
+  const saved = new Map(list.map((p) => [p.id, p.position]));
+  if (ids.length !== list.length || new Set(ids).size !== ids.length || !ids.every((id) => saved.has(id))) {
+    return failed("The gallery changed meanwhile. Reload the page and try again.");
+  }
+  for (const [position, id] of (ids as string[]).entries()) {
+    if (saved.get(id) === position) continue;
+    const { error: updateError } = await g.db.from("event_photos").update({ position }).eq("id", id);
+    if (updateError) return failed(explainDbError(updateError.message));
   }
   updateTag(EVENTS_TAG);
-  return ok(previous, "Moved.");
+  return ok(previous, "Order saved.");
 }
 
 export async function deletePhoto(previous: ActionState, fd: FormData): Promise<ActionState> {

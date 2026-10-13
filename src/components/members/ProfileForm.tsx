@@ -10,7 +10,7 @@ import { AvatarField } from "./AvatarField";
 import { BloodGroupSelect, Choices, FormMessage, MemberForm, PaymentFields, Section, TextInput } from "./MemberFields";
 
 /** /account: everything a member can change about themselves. */
-export function ProfileForm({ member, live }: { member: Member; live: boolean }) {
+export function ProfileForm({ member, live, codeRequired }: { member: Member; live: boolean; codeRequired: boolean }) {
   const [bio, setBio] = useState(member.bio ?? "");
   const rejected = member.status === "rejected";
 
@@ -26,6 +26,7 @@ export function ProfileForm({ member, live }: { member: Member; live: boolean })
                   iubId={member.iubId}
                   errors={e}
                   defaults={{ method: member.paymentMethod, sender: member.bkashSenderNumber, txn: member.bkashTransactionId }}
+                  codeRequired={codeRequired}
                 />
               </Section>
             )}
