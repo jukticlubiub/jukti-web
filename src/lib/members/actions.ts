@@ -6,7 +6,7 @@ import { z } from "zod";
 import { type ActionState, failed, fieldErrors, ok } from "@/lib/admin/form";
 import { getExecutiveCodeRequired, getRegistrationOpen } from "@/lib/content/queries";
 import { createSessionClient } from "@/lib/supabase/server";
-import { getAccount, memberMode, readPreviewMember, writePreviewMember } from "./account";
+import { getAccount, isImportedMember, memberMode, readPreviewMember, writePreviewMember } from "./account";
 import { type MemberStatus, memberStatuses } from "./options";
 import { MEMBERS_TAG } from "./public";
 import { currentSemester } from "./semester";
@@ -183,7 +183,9 @@ export async function updateProfile(previous: ActionState, fd: FormData): Promis
     hide_from_public: fd.get("hide_from_public") === "on",
   });
   const resubmitting = fd.has("payment_method");
-  const payment = resubmitting ? paymentSchema(await getExecutiveCodeRequired()).safeParse(readPayment(fd)) : null;
+  // Imported members (from the registration app) are never asked for the code.
+  const codeRequired = resubmitting && (await getExecutiveCodeRequired()) && !(await isImportedMember());
+  const payment = resubmitting ? paymentSchema(codeRequired).safeParse(readPayment(fd)) : null;
   if (!profile.success || !extras.success || (payment && !payment.success)) {
     return failed(CHECK_FORM, {
       ...(profile.success ? {} : fieldErrors(profile.error)),

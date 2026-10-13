@@ -81,6 +81,17 @@ export async function getAccount(): Promise<Account> {
 
 export type MemberAccount = Account & { user: AccountUser; member: Member };
 
+/**
+ * Whether the signed-in member came from the old registration app (claimed an imported
+ * membership). They paid and were verified there, so they're never asked for an executive's code.
+ */
+export async function isImportedMember(): Promise<boolean> {
+  if (memberMode() !== "live") return false;
+  const supabase = await createSessionClient();
+  const { data } = await supabase.rpc("is_imported_member");
+  return data === true;
+}
+
 /** The signed-in member, or a redirect to /join (signed out, or not registered). */
 export async function requireMember(): Promise<MemberAccount> {
   const account = await getAccount();

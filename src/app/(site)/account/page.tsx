@@ -9,7 +9,7 @@ import { ArrowIcon } from "@/components/ui/icons";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/cn";
 import { getExecutiveCodeRequired } from "@/lib/content/queries";
-import { requireMember } from "@/lib/members/account";
+import { isImportedMember, requireMember } from "@/lib/members/account";
 import { requestTime } from "@/lib/events/now";
 import { resetPreview, setPreviewStatus } from "@/lib/members/actions";
 import { memberStatuses } from "@/lib/members/options";
@@ -31,7 +31,15 @@ export default function AccountPage({ searchParams }: PageProps<"/account">) {
 }
 
 async function AccountBody({ searchParams }: Pick<PageProps<"/account">, "searchParams">) {
-  const [{ mode, user, member }, params, now, codeRequired] = await Promise.all([requireMember(), searchParams, requestTime(), getExecutiveCodeRequired()]);
+  const [{ mode, user, member }, params, now, codeOn, imported] = await Promise.all([
+    requireMember(),
+    searchParams,
+    requestTime(),
+    getExecutiveCodeRequired(),
+    isImportedMember(),
+  ]);
+  // Members imported from the registration app are never asked for an executive's code.
+  const codeRequired = codeOn && !imported;
   const live = mode === "live";
   const missing = [!member.secondaryEmail && "a personal email", !member.photoUrl && "a photo"].filter(Boolean) as string[];
 
