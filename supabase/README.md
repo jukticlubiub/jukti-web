@@ -32,6 +32,10 @@ the one-time setup, and how the panel's roles work.
      and a required photo when registering or saving a profile
    - `…_imported_no_code.sql`: members imported from the registration app are never asked
      for an executive's code (even if sent back to fix their payment)
+   - `…_submission_guards.sql`: BEFORE INSERT triggers on `contact_messages` and
+     `sabbir_memories` (the two anon-writable tables) enforcing length caps and a rate
+     limit at the database, so the contact form and memorial can't be flooded through
+     the public API
 2. **Load the starting content**: paste `seed/faculty.sql`, then `seed/content.sql`, into
    the SQL editor. For members, see **Members** below (the import and executive codes). (`content.sql` copies the team, alumni, story chapters, developers,
    board term and social links from `src/lib/data/`. It only fills empty tables, so it's

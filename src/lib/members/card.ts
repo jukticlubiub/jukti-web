@@ -20,6 +20,15 @@ function sign(memberId: string, key: string) {
   return createHmac("sha256", key).update(`member:${memberId}`).digest("base64url").slice(0, 22);
 }
 
+/**
+ * Whether member cards can be signed right now (MEMBER_CARD_SECRET is set, or development).
+ * When this is false in production, cards show no QR code and check-in scans are refused, so
+ * the admin panel warns about it instead of failing silently.
+ */
+export function cardsSignable() {
+  return secret() !== null;
+}
+
 /** The text in a member's QR code, or null when cards can't be signed. */
 export function cardToken(memberId: string) {
   const key = secret();

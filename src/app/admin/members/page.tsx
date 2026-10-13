@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { getExecutiveCodeRequired, getRegistrationOpen } from "@/lib/content/queries";
 import { requestTime } from "@/lib/events/now";
 import { memberStatuses, statusInfo, statusPillTone as pillTone } from "@/lib/members/options";
+import { cardsSignable } from "@/lib/members/card";
 import { currentSemester, intakeLabel, termLabel } from "@/lib/members/semester";
 import type { Member } from "@/lib/members/types";
 
@@ -71,6 +72,13 @@ async function Members({ searchParams }: Pick<PageProps<"/admin/members">, "sear
           </div>
         </div>
       </Panel>
+      {!cardsSignable() && (
+        <p className="mb-5 rounded-[14px] border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-[0.92rem] text-body">
+          Member cards can’t be signed, so members see no QR code and check-in scans are refused. Set{" "}
+          <code className="rounded bg-white/10 px-1.5 py-0.5 text-[0.85em]">MEMBER_CARD_SECRET</code> (16+ characters) in the hosting
+          environment — in Vercel, Settings → Environment Variables, for Production — then redeploy.
+        </p>
+      )}
       {executives.size === 0 && codeRequired && (
         <p className="mb-5 rounded-[14px] border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-[0.92rem] text-body">
           No executive codes are set up, so new registrations can enter any code.{" "}
