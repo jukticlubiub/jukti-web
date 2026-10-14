@@ -11,16 +11,20 @@ export async function GET(request: NextRequest) {
 
   if (supabaseEnv && code) {
     const supabase = await createSessionClient();
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // Skip the /join ⇄ /account bounce: /join redirects members to /account and /account
       // redirects non-members to /join, so a sign-in through either would load twice (a blank
-      // flash on the way back from Google). Send them straight to the right one.
+      // flash on the way back from Google). Resolve the destination here instead.
+      //
+      // claim_member_import() is the same idempotent call the pages use: 'member' if they already
+      // are one, 'claimed' if this is an imported member's first sign-in (it activates them now,
+      // so they skip the bounce too), null if they still need to register. Any other failure just
+      // falls back to `next`, whose page claims on its own — no worse than before.
       let dest = next;
-      const uid = data.session?.user?.id;
-      if (uid && (next === "/join" || next === "/account")) {
-        const { data: member } = await supabase.from("members").select("id").eq("id", uid).maybeSingle();
-        dest = member ? "/account" : "/join";
+      if (next === "/join" || next === "/account") {
+        const { data: claim } = await supabase.rpc("claim_member_import");
+        dest = claim === "member" || claim === "claimed" ? "/account" : "/join";
       }
       return NextResponse.redirect(new URL(dest, origin));
     }
