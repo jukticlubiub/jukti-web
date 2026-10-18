@@ -1,5 +1,6 @@
 import { GlassCard } from "@/components/glass/GlassCard";
 import { ArrowIcon, FacebookIcon, InstagramIcon, LinkedInIcon, MailIcon } from "@/components/ui/icons";
+import { EmailMenu } from "@/components/ui/EmailMenu";
 import { Reveal } from "@/components/ui/Reveal";
 import { getSocials } from "@/lib/content/queries";
 import { CopyEmail } from "./CopyEmail";
@@ -70,13 +71,13 @@ export async function SocialCards() {
               <MailIcon />
             </span>
             <p className="mt-8 text-[0.78rem] font-medium tracking-[0.16em] text-muted uppercase">Email</p>
-            {/* The address is the card's main link; it covers the card, and Copy sits above it. */}
-            <a
-              href={`mailto:${email}`}
+            {/* The address opens the email menu; it covers the card, and Copy sits above it. */}
+            <EmailMenu
+              email={email}
               className="mt-2 font-heading text-[clamp(0.95rem,1.1vw,1.1rem)] leading-tight [overflow-wrap:anywhere] transition-colors duration-300 group-hover:text-flare after:absolute after:inset-0 after:rounded-[inherit]"
             >
               {email}
-            </a>
+            </EmailMenu>
             <p className="mt-3 text-[0.98rem] leading-relaxed text-body/85">Partnerships, sponsorships and anything else. We read everything.</p>
             <div className="mt-auto flex items-center justify-between gap-3 pt-8">
               <span className="inline-flex items-center gap-2 text-[0.9rem] font-medium text-fg">

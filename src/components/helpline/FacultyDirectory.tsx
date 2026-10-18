@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { CopyEmail } from "@/components/contact/CopyEmail";
 import { AuthorAvatar } from "@/components/logs/Author";
+import { EmailMenu } from "@/components/ui/EmailMenu";
 import { DoorIcon, MailIcon } from "@/components/ui/icons";
 import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
@@ -131,9 +132,9 @@ function FacultyCard({ faculty }: { faculty: Faculty }) {
             <span className="sr-only">Email</span>
           </dt>
           <dd className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <a href={`mailto:${faculty.email}`} className="min-w-0 truncate text-body transition-colors hover:text-flare">
+            <EmailMenu email={faculty.email} className="min-w-0 truncate text-body transition-colors hover:text-flare">
               {faculty.email}
-            </a>
+            </EmailMenu>
             <CopyEmail email={faculty.email} iconOnly />
           </dd>
         </div>

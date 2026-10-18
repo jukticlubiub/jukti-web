@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { describeLink, type LinkKind } from "@/lib/profile-links";
+import { EmailMenu } from "@/components/ui/EmailMenu";
 
 const icons: Record<LinkKind, React.ReactNode> = {
   linkedin: <LinkedInIcon />,
@@ -37,9 +38,9 @@ export function ProfileLinks({ name, email, links = [], className }: { name: str
     <ul aria-label={`Contact ${name}`} className={cn("flex flex-wrap gap-2", className)}>
       {email && (
         <li>
-          <a href={`mailto:${email}`} title={email} aria-label={`Email ${name} (${email})`} className={button}>
+          <EmailMenu email={email} label={`Email ${name} (${email})`} className={button}>
             <MailIcon />
-          </a>
+          </EmailMenu>
         </li>
       )}
       {links.map((href) => {

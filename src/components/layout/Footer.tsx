@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CseLogo, IubLogo } from "@/components/brand/AffiliationLogos";
 import { Logo } from "@/components/brand/Logo";
+import { EmailMenu } from "@/components/ui/EmailMenu";
 import { getSocials } from "@/lib/content/queries";
 import { joinLink, navLinks, site } from "@/lib/site";
 
@@ -10,7 +11,6 @@ export async function Footer() {
     { label: "Facebook", href: socials.facebook },
     { label: "Instagram", href: socials.instagram },
     { label: "LinkedIn", href: socials.linkedin },
-    { label: "Email", href: socials.email && `mailto:${socials.email}` },
   ].filter((s) => s.href);
 
   return (
@@ -45,7 +45,7 @@ export async function Footer() {
 
         <div>
           <p className="mb-4 font-heading text-sm tracking-normal">Connect</p>
-          {socialLinks.length > 0 ? (
+          {socialLinks.length > 0 || socials.email ? (
             <ul className="space-y-2.5">
               {socialLinks.map((s) => (
                 <li key={s.label}>
@@ -54,6 +54,13 @@ export async function Footer() {
                   </a>
                 </li>
               ))}
+              {socials.email && (
+                <li>
+                  <EmailMenu email={socials.email} className="text-body transition-colors hover:text-flare">
+                    Email
+                  </EmailMenu>
+                </li>
+              )}
             </ul>
           ) : (
             <p className="text-muted">Social links coming soon.</p>

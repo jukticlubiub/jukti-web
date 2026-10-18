@@ -4,6 +4,7 @@ import { CampusMapSection } from "@/components/contact/CampusMapSection";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { SocialCards } from "@/components/contact/SocialCards";
 import { PageBackdrop } from "@/components/layout/PageBackdrop";
+import { EmailMenu } from "@/components/ui/EmailMenu";
 import { MailIcon } from "@/components/ui/icons";
 import { MaskReveal, Reveal } from "@/components/ui/Reveal";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -51,13 +52,10 @@ export default async function ContactPage() {
             </Reveal>
             <Reveal delay={0.1} className="mt-8 text-body">
               <p className="text-[0.78rem] font-medium tracking-[0.16em] text-muted uppercase">Prefer your own email app?</p>
-              <a
-                href={`mailto:${email}`}
-                className="mt-2.5 inline-flex items-center gap-2.5 text-[1.05rem] text-fg transition-colors hover:text-flare"
-              >
+              <EmailMenu email={email} className="mt-2.5 inline-flex items-center gap-2.5 text-[1.05rem] text-fg transition-colors hover:text-flare">
                 <MailIcon className="text-flare" />
                 {email}
-              </a>
+              </EmailMenu>
             </Reveal>
           </div>
           <Reveal delay={0.1} className="glass-card relative p-6 sm:p-8">
