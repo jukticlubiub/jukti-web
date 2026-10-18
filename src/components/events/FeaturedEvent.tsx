@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GlassCard } from "@/components/glass/GlassCard";
+import { cn } from "@/lib/cn";
 import { calendarFilePath, eventPath, googleCalendarUrl } from "@/lib/events/calendar";
 import { categoryLabels, type EventStatus, type JuktiEvent } from "@/lib/events/types";
 import { site } from "@/lib/site";
@@ -18,6 +19,8 @@ import { StatusChip } from "./StatusChip";
  */
 export function FeaturedEvent({ event, status }: { event: JuktiEvent; status: EventStatus }) {
   const href = eventPath(event.slug);
+  // Large screens show the square cover when there is one, so the frame turns square to match it.
+  const hasSquare = Boolean(event.cover?.squareUrl && event.cover.squareUrl !== event.cover.url);
 
   return (
     <section aria-labelledby="featured-title" className="relative">
@@ -31,9 +34,24 @@ export function FeaturedEvent({ event, status }: { event: JuktiEvent; status: Ev
           href={href}
           tabIndex={-1}
           aria-hidden
-          className="relative block aspect-[16/9] overflow-hidden rounded-[14px] lg:aspect-auto lg:min-h-[34rem]"
+          className={cn(
+            "relative block overflow-hidden rounded-[14px]",
+            hasSquare ? "lg:aspect-square lg:self-center" : "aspect-[16/9] lg:aspect-auto lg:min-h-[34rem]",
+          )}
         >
-          <EventCover event={event} animated priority contain squareOnLarge sizes="(max-width: 1024px) 100vw, 45vw" />
+          {hasSquare ? (
+            // Smaller screens: the wide cover at its own shape. Large: the square cover filling the square frame.
+            <EventCover
+              event={event}
+              natural
+              squareOnLarge
+              priority
+              sizes="(max-width: 1024px) 100vw, 45vw"
+              className="lg:absolute lg:inset-0 lg:h-full lg:object-cover"
+            />
+          ) : (
+            <EventCover event={event} animated priority contain sizes="(max-width: 1024px) 100vw, 45vw" />
+          )}
         </Link>
 
         <div className="flex flex-col gap-6 px-3 pt-6 pb-4 sm:px-5 lg:justify-center lg:gap-7 lg:py-10 lg:pr-[clamp(1.5rem,3vw,3.5rem)] lg:pl-[clamp(1.75rem,3.2vw,3.75rem)]">

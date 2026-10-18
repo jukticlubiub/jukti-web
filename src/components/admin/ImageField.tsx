@@ -195,7 +195,7 @@ export function ImageField({
           </div>
           <p className="text-[0.78rem] text-muted">
             You’ll frame it for {firstShape.label.toLowerCase()}
-            {firstShape.aspect ? ` (${shapeName(firstShape.aspect)})` : ""} before it’s saved.
+            {firstShape.aspect && !/\d:\d/.test(firstShape.label) ? ` (${shapeName(firstShape.aspect)})` : ""} before it’s saved.
           </p>
           <input
             aria-label={`${label} URL`}
@@ -225,10 +225,11 @@ export function ImageField({
 function shapeName(aspect: number) {
   const known: [number, string][] = [
     [1, "square"],
+    [16 / 9, "16:9"],
     [16 / 10, "16:10"],
     [4 / 3, "4:3"],
     [4 / 5, "4:5"],
     [2 / 3, "2:3"],
   ];
-  return known.find(([a]) => Math.abs(a - aspect) < 0.01)?.[1] ?? "portrait";
+  return known.find(([a]) => Math.abs(a - aspect) < 0.01)?.[1] ?? (aspect > 1 ? "landscape" : "portrait");
 }
