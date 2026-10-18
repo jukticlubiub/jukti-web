@@ -46,6 +46,7 @@ type Row = {
   recap: string | null;
   rsvp_enabled: boolean;
   rsvp_deadline: string | null;
+  rsvp_closed: boolean;
   capacity: number | null;
   audience: string;
   rsvp_fields: unknown;
@@ -58,7 +59,7 @@ type Row = {
 };
 
 const COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, rsvp_closed, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, event_photos(count)";
 
 function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): AdminEvent {
   return {
@@ -74,7 +75,7 @@ function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): A
     cover: r.cover_url || r.cover_square_url ? { url: (r.cover_url || r.cover_square_url)!, alt: r.cover_alt, squareUrl: r.cover_square_url } : null,
     agenda: Array.isArray(r.agenda) ? r.agenda : [],
     recap: r.recap,
-    rsvp: { enabled: r.rsvp_enabled, deadline: r.rsvp_deadline, capacity: r.capacity, registered: counts?.registered ?? 0, waitlisted: counts?.waitlisted ?? 0, audience: r.audience === "open" ? "open" : "iub", fields: parseRsvpFields(r.rsvp_fields), questions: parseRsvpQuestions(r.rsvp_questions) },
+    rsvp: { enabled: r.rsvp_enabled, deadline: r.rsvp_deadline, closed: r.rsvp_closed, capacity: r.capacity, registered: counts?.registered ?? 0, waitlisted: counts?.waitlisted ?? 0, audience: r.audience === "open" ? "open" : "iub", fields: parseRsvpFields(r.rsvp_fields), questions: parseRsvpQuestions(r.rsvp_questions) },
     photoCount: r.event_photos[0]?.count ?? 0,
     fee: r.fee_amount && r.fee_amount > 0 ? { amount: r.fee_amount, bkashNumber: r.fee_bkash_number, note: r.fee_note } : null,
     published: r.published,

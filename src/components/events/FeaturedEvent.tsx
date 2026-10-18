@@ -19,6 +19,8 @@ import { StatusChip } from "./StatusChip";
  */
 export function FeaturedEvent({ event, status }: { event: JuktiEvent; status: EventStatus }) {
   const href = eventPath(event.slug);
+  // Taking RSVPs right now (on, and not closed early by the organisers).
+  const rsvpOpen = event.rsvp.enabled && !event.rsvp.closed;
   // Large screens show the square cover when there is one, so the frame turns square to match it.
   const hasSquare = Boolean(event.cover?.squareUrl && event.cover.squareUrl !== event.cover.url);
 
@@ -76,11 +78,11 @@ export function FeaturedEvent({ event, status }: { event: JuktiEvent; status: Ev
           {event.rsvp.enabled && <SeatsMeter seats={event.rsvp} className="max-w-md" />}
 
           <div className="flex flex-wrap gap-3 pt-1">
-            <Link href={event.rsvp.enabled ? `${href}#rsvp` : href} className="btn-pill btn-primary">
-              {event.rsvp.enabled ? "RSVP now" : "View event"}
+            <Link href={rsvpOpen ? `${href}#rsvp` : href} className="btn-pill btn-primary">
+              {rsvpOpen ? "RSVP now" : "View event"}
               <ArrowIcon />
             </Link>
-            {event.rsvp.enabled && (
+            {rsvpOpen && (
               <Link href={href} className="btn-pill btn-ghost">
                 Details
               </Link>

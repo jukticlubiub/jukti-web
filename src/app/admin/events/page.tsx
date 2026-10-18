@@ -89,6 +89,11 @@ async function Events({ searchParams }: Pick<PageProps<"/admin/events">, "search
                 <Cell label="Status">{e.published ? <Pill tone={past ? "grey" : "green"}>{past ? "Past" : "Published"}</Pill> : <Pill tone="orange">Draft</Pill>}</Cell>
                 <Cell label="RSVPs" className="tabular-nums">
                   {e.rsvp.enabled ? `${e.rsvp.registered}${e.rsvp.capacity ? ` / ${e.rsvp.capacity}` : ""}${e.rsvp.waitlisted ? ` (+${e.rsvp.waitlisted})` : ""}` : <span className="text-muted">Off</span>}
+                  {e.rsvp.enabled && e.rsvp.closed && !past && (
+                    <span className="mt-1 block">
+                      <Pill tone="orange">Closed</Pill>
+                    </span>
+                  )}
                 </Cell>
                 <Cell label="Docs">
                   {past ? (

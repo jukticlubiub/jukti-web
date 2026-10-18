@@ -109,8 +109,8 @@ async function EventDetail({ params, searchParams }: Pick<PageProps<"/events/[sl
               </a>
             ) : (
               event.rsvp.enabled && (
-                <a href="#rsvp" className="btn-pill btn-primary">
-                  RSVP
+                <a href="#rsvp" className={event.rsvp.closed ? "btn-pill btn-ghost" : "btn-pill btn-primary"}>
+                  {event.rsvp.closed ? "Registration closed" : "RSVP"}
                   <ArrowIcon />
                 </a>
               )

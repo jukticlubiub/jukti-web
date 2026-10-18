@@ -74,6 +74,8 @@ export type RsvpState = {
   phase: RsvpPhase;
   seats: EventSeats;
   closesAt: string;
+  /** Closed early by the organisers (not by the deadline): the panel says to try again next time. */
+  closedEarly: boolean;
   /** Who the form is for. Null when signed out (live mode). */
   viewer: RsvpViewer | null;
   registration: RsvpRegistration | null;
@@ -87,6 +89,7 @@ export function rsvpMode(): RsvpMode {
 function rsvpPhase(event: JuktiEvent, now: number): RsvpPhase {
   if (!event.rsvp.enabled) return "none";
   if (now >= Date.parse(event.endsAt)) return "ended";
+  if (event.rsvp.closed) return "closed";
   if (now >= Date.parse(rsvpClosesAt(event))) return "closed";
   return "open";
 }
@@ -99,6 +102,7 @@ export async function getRsvpState(event: JuktiEvent): Promise<RsvpState> {
     phase: rsvpPhase(event, Date.now()),
     seats: { capacity: event.rsvp.capacity, registered: event.rsvp.registered, waitlisted: event.rsvp.waitlisted },
     closesAt: rsvpClosesAt(event),
+    closedEarly: Boolean(event.rsvp.closed),
   };
   if (base.phase === "none" || mode === "off") return { ...base, viewer: null, registration: null };
   if (mode === "preview") return { ...base, ...(await previewState(event)) };

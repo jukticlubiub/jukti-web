@@ -246,6 +246,19 @@ export async function cancelRegistration(previous: ActionState, fd: FormData): P
   return ok(previous, "RSVP cancelled.");
 }
 
+/** Stop taking RSVPs (no new sign-ups; the site says registration is closed), or start again. */
+export async function setRsvpClosed(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("events");
+  if (!g.ok) return g.state;
+  const closed = str(fd, "closed") === "true";
+  const { data, error } = await g.db.from("events").update({ rsvp_closed: closed }).eq("id", str(fd, "id")).select("id").maybeSingle();
+  if (error) return failed(explainDbError(error.message));
+  if (!data) return failed("This event couldn’t be found. Refresh the page.");
+  updateTag(EVENTS_TAG);
+  refresh();
+  return ok(previous, closed ? "RSVPs closed. No one else can register." : "RSVPs open again.");
+}
+
 /** Give a waitlisted person a seat by hand, even past the capacity. Emails them their ticket. */
 export async function approveRegistration(previous: ActionState, fd: FormData): Promise<ActionState> {
   const g = await guard("events");

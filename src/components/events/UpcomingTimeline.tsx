@@ -12,6 +12,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 function rsvpNote(event: JuktiEvent) {
   const { enabled, capacity, registered } = event.rsvp;
   if (!enabled) return "Open to all, no RSVP needed";
+  if (event.rsvp.closed) return "Registration closed";
   if (capacity === null) return "RSVP open";
   const left = capacity - registered;
   if (left <= 0) return "Fully booked, waitlist open";

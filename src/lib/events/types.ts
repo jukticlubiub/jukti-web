@@ -103,6 +103,8 @@ export type JuktiEvent = {
     enabled: boolean;
     /** ISO timestamp. Null means RSVPs close when the event starts. */
     deadline: string | null;
+    /** Closed early by an Event Manager ("Stop taking RSVPs"): no new sign-ups until reopened. */
+    closed?: boolean;
     /** Who may RSVP, and what the form asks. */
     audience: EventAudience;
     fields: RsvpFields;

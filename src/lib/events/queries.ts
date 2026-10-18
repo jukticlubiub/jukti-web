@@ -25,6 +25,7 @@ type EventRow = {
   recap: string | null;
   rsvp_enabled: boolean;
   rsvp_deadline: string | null;
+  rsvp_closed: boolean;
   capacity: number | null;
   audience: string;
   rsvp_fields: unknown;
@@ -38,7 +39,7 @@ type EventRow = {
 type CountRow = { event_id: string; registered: number; waitlisted: number };
 
 const EVENT_COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, rsvp_closed, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
 
 function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
   const category = (eventCategories as readonly string[]).includes(row.category)
@@ -60,6 +61,7 @@ function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
     rsvp: {
       enabled: row.rsvp_enabled,
       deadline: row.rsvp_deadline,
+      closed: row.rsvp_closed,
       capacity: row.capacity,
       registered: counts?.registered ?? 0,
       waitlisted: counts?.waitlisted ?? 0,

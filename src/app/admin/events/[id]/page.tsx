@@ -8,6 +8,9 @@ import { RecapForm } from "@/components/admin/events/RecapForm";
 import { Attendance } from "@/components/admin/events/Attendance";
 import { CheckInScanner } from "@/components/admin/events/CheckInScanner";
 import { RsvpTable } from "@/components/admin/events/RsvpTable";
+import { ActionButton } from "@/components/admin/forms";
+import { setRsvpClosed } from "@/lib/admin/actions/events";
+import { rsvpClosesAt } from "@/lib/events/time";
 import { PageHeader, PageSkeleton, Panel, Pill, formatWhen } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { requestTime } from "@/lib/events/now";
@@ -97,6 +100,7 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
       )}
       {tab === "rsvps" && (
         <Panel>
+          {event.rsvp.enabled && <RsvpGate event={event} now={await requestTime()} />}
           {event.rsvp.enabled || event.rsvp.registered > 0 ? (
             <RsvpTable registrations={await getRegistrations(admin, event.id)} questions={event.rsvp.questions} capacity={event.rsvp.capacity} csvHref={`/admin/events/${event.id}/rsvps.csv`} />
           ) : (
@@ -122,6 +126,41 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
         </div>
       )}
     </>
+  );
+}
+
+/** Whether the event is taking RSVPs right now, and the switch to stop or restart them. */
+function RsvpGate({ event, now }: { event: NonNullable<Awaited<ReturnType<typeof getAdminEvent>>>; now: number }) {
+  const over = now >= Date.parse(event.endsAt);
+  const pastDeadline = now >= Date.parse(rsvpClosesAt(event));
+  if (over) return null;
+  const closed = Boolean(event.rsvp.closed);
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-glass-border bg-white/[0.03] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2.5 text-[0.9rem]">
+        {closed ? <Pill tone="orange">RSVPs closed</Pill> : pastDeadline ? <Pill tone="grey">Deadline passed</Pill> : <Pill tone="green">Taking RSVPs</Pill>}
+        <span className="text-muted">
+          {closed
+            ? "No one can register. The site says registration is closed."
+            : pastDeadline
+              ? "The RSVP deadline has passed, so no one can register."
+              : "People can register on the event page."}
+        </span>
+      </div>
+      {!pastDeadline || closed ? (
+        <ActionButton
+          action={setRsvpClosed}
+          fields={{ id: event.id, closed: String(!closed) }}
+          label={closed ? "Start taking RSVPs" : "Stop taking RSVPs"}
+          confirm={
+            closed
+              ? "Open RSVPs again? People can register on the event page."
+              : "Stop taking RSVPs? No one else can register, and the site will say registration is closed. People already registered keep their seat."
+          }
+          tone={closed ? "primary" : "danger"}
+        />
+      ) : null}
+    </div>
   );
 }
 

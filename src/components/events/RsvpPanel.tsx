@@ -61,7 +61,7 @@ function headingFor(view: View, state: RsvpState) {
     case "ended":
       return "This event has ended";
     case "closed":
-      return "RSVPs are closed";
+      return state.closedEarly ? "Registration closed" : "RSVPs are closed";
     case "off":
       return "RSVP opens soon";
     case "wrong-account":
@@ -163,7 +163,9 @@ export function RsvpPanel({
             {view === "closed" && (
               <Body>
                 <p>
-                  RSVPs closed on {formatDay(state.closesAt)}. You can still add the event to your calendar.
+                  {state.closedEarly
+                    ? "We’re not taking any more registrations for this event. Try again next time, and keep an eye on our socials for the next one."
+                    : `RSVPs closed on ${formatDay(state.closesAt)}. You can still add the event to your calendar.`}
                 </p>
                 <AddToCalendar googleUrl={googleUrl} icsPath={icsPath} className="mt-5" />
               </Body>
