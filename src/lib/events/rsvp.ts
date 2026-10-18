@@ -47,7 +47,15 @@ export function toRegistration(row: RegistrationRow | null | undefined): RsvpReg
   };
 }
 
-export type RsvpViewer = { name: string; email: string; studentId: string };
+export type RsvpViewer = {
+  name: string;
+  email: string;
+  studentId: string;
+  /** Prefill for configurable fields, from the member's profile when they have one. */
+  department?: string;
+  phone?: string;
+  bloodGroup?: string;
+};
 
 export type RsvpState = {
   mode: RsvpMode;
@@ -97,8 +105,8 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
   const [seats, mine, member, previous] = await Promise.all([
     getLiveSeats(event),
     claims ? supabase.rpc("my_event_registration", { p_event_id: event.id }) : null,
-    // Members' own name and IUB ID fill the form first.
-    claims ? supabase.from("members").select("name, iub_id").eq("id", claims.sub).maybeSingle() : null,
+    // Members' own profile fills the form first.
+    claims ? supabase.from("members").select("name, iub_id, department, contact_number, blood_group").eq("id", claims.sub).maybeSingle() : null,
     // Their details from their last RSVP, so the form is filled in next time.
     claims
       ? supabase
@@ -120,6 +128,9 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
       name: member?.data?.name || previous?.data?.full_name || metadata.full_name || metadata.name || "",
       email: typeof claims.email === "string" ? claims.email : "",
       studentId: member?.data?.iub_id || previous?.data?.student_id || "",
+      department: member?.data?.department || "",
+      phone: member?.data?.contact_number || "",
+      bloodGroup: member?.data?.blood_group || "",
     },
     registration: toRegistration(mine?.data as RegistrationRow | null),
   };

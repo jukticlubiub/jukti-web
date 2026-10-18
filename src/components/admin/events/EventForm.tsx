@@ -3,7 +3,7 @@
 import { saveEvent } from "@/lib/admin/actions/events";
 import { toDhakaInput } from "@/lib/admin/form";
 import type { AdminEvent } from "@/lib/admin/data/events";
-import { categoryLabels, eventCategories } from "@/lib/events/types";
+import { categoryLabels, eventCategories, rsvpFieldLabels, rsvpStandardFields } from "@/lib/events/types";
 import { AdminForm, Select, TextArea, TextField, Toggle } from "../forms";
 import { ImageField } from "../ImageField";
 import { OpenCreated } from "../OpenCreated";
@@ -13,6 +13,15 @@ const toEventPage = (id: string) => `/admin/events/${id}`;
 /** Create or edit an event (Event Manager). */
 export function EventForm({ event, live }: { event?: AdminEvent; live: boolean }) {
   const agenda = event?.agenda.map((a) => [a.time, a.title, a.detail].filter(Boolean).join(" | ")).join("\n") ?? "";
+  const questions =
+    event?.rsvp.questions
+      .map((q) => [q.label, q.type, ...(q.type === "select" || q.type === "checkbox" ? [q.options.join(", ")] : []), ...(q.required ? ["required"] : [])].join(" | "))
+      .join("\n") ?? "";
+  const fieldModes = [
+    { value: "off", label: "Don’t collect" },
+    { value: "optional", label: "Optional" },
+    { value: "required", label: "Required" },
+  ];
   return (
     <AdminForm action={saveEvent} submitLabel={event ? "Save event" : "Create event"}>
       {(state) => (
@@ -52,11 +61,39 @@ export function EventForm({ event, live }: { event?: AdminEvent; live: boolean }
           />
           <fieldset className="grid gap-4 rounded-[14px] border border-glass-border p-4">
             <legend className="px-2 text-[0.85rem] text-muted">RSVP</legend>
-            <Toggle label="Take RSVPs" name="rsvpEnabled" defaultChecked={event?.rsvp.enabled} hint="Students sign in with Google to reserve a seat." />
+            <Toggle label="Take RSVPs" name="rsvpEnabled" defaultChecked={event?.rsvp.enabled} hint="People sign in with Google to reserve a seat." />
+            <Select
+              label="Who can RSVP"
+              name="audience"
+              state={state}
+              defaultValue={event?.rsvp.audience ?? "iub"}
+              options={[
+                { value: "iub", label: "IUB students only (@iub.edu.bd)" },
+                { value: "open", label: "Open to everyone" },
+              ]}
+            />
             <div className="grid gap-5 md:grid-cols-2">
               <TextField label="Seats (empty = no limit)" name="capacity" type="number" min={1} state={state} defaultValue={event?.rsvp.capacity ?? ""} />
               <TextField label="RSVPs close (empty = when it starts)" name="rsvpDeadline" type="datetime-local" state={state} defaultValue={toDhakaInput(event?.rsvp.deadline)} />
             </div>
+            <div className="grid gap-3">
+              <p className="text-[0.85rem] text-muted">What to ask (name &amp; email are always collected; IUB members have theirs filled in from their profile):</p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {rsvpStandardFields.map((f) => (
+                  <Select key={f} label={rsvpFieldLabels[f]} name={`field_${f}`} state={state} defaultValue={event?.rsvp.fields[f] ?? "off"} options={fieldModes} />
+                ))}
+              </div>
+            </div>
+            <TextArea
+              label="Custom questions (optional)"
+              name="questions"
+              rows={4}
+              mono
+              state={state}
+              defaultValue={questions}
+              placeholder={"T-shirt size | select | S, M, L, XL | required\nDietary needs | short\nYour question for the panel | long"}
+              hint={<span className="text-[0.78rem] text-muted">One per line: label | type | options | required. Type: short, long, select, checkbox. Options (comma-separated) only for select/checkbox.</span>}
+            />
           </fieldset>
           <fieldset className="grid gap-4 rounded-[14px] border border-glass-border p-4">
             <legend className="px-2 text-[0.85rem] text-muted">Registration fee</legend>

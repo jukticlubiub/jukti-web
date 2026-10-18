@@ -4,9 +4,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useActionState, useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { signOut } from "@/lib/auth/actions";
-import { rsvpAction, type RsvpField, type RsvpFormState } from "@/lib/events/actions";
-import type { RsvpRegistration, RsvpState } from "@/lib/events/rsvp";
-import type { EventFee } from "@/lib/events/types";
+import { rsvpAction, type RsvpFormState } from "@/lib/events/actions";
+import type { RsvpRegistration, RsvpState, RsvpViewer } from "@/lib/events/rsvp";
+import { type EventAudience, type EventFee, type RsvpFields, type RsvpQuestion, rsvpFieldLabels, type RsvpStandardField, rsvpStandardFields } from "@/lib/events/types";
 import { bkashNumber as clubBkash } from "@/lib/members/options";
 import { formatDay, formatTime } from "@/lib/events/time";
 import { AddToCalendar } from "./AddToCalendar";
@@ -14,17 +14,30 @@ import { GoogleSignIn } from "@/components/ui/GoogleSignIn";
 import { CheckIcon, ClockIcon } from "@/components/ui/icons";
 import { SeatsMeter } from "./SeatsMeter";
 
-type PanelEvent = { id: string; slug: string; title: string; startsAt: string; hasPhotos: boolean; fee: EventFee | null };
+type PanelEvent = {
+  id: string;
+  slug: string;
+  title: string;
+  startsAt: string;
+  hasPhotos: boolean;
+  fee: EventFee | null;
+  audience: EventAudience;
+  fields: RsvpFields;
+  questions: RsvpQuestion[];
+};
 
-type View = "none" | "ended" | "closed" | "off" | "signed-out" | "form" | "registered" | "waitlisted";
+type View = "none" | "ended" | "closed" | "off" | "signed-out" | "wrong-account" | "form" | "registered" | "waitlisted";
 
-function viewFor(state: RsvpState): View {
+const isIubEmail = (email: string | undefined) => /@iub\.edu\.bd$/i.test(email ?? "");
+
+function viewFor(state: RsvpState, audience: EventAudience): View {
   if (state.phase === "none") return "none";
   if (state.phase === "ended") return "ended";
   if (state.registration) return state.registration.status;
   if (state.phase === "closed") return "closed";
   if (state.mode === "off") return "off";
   if (!state.viewer) return "signed-out";
+  if (audience === "iub" && state.mode === "live" && !isIubEmail(state.viewer.email)) return "wrong-account";
   return "form";
 }
 
@@ -40,6 +53,8 @@ function headingFor(view: View, state: RsvpState) {
       return "RSVPs are closed";
     case "off":
       return "RSVP opens soon";
+    case "wrong-account":
+      return "IUB students only";
     case "registered":
       return "You’re in!";
     case "waitlisted":
@@ -78,7 +93,7 @@ export function RsvpPanel({
   const [result, formAction, pending] = useActionState(rsvpAction, { state: initial });
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const { state } = result;
-  const view = viewFor(state);
+  const view = viewFor(state, event.audience);
   const showSeats = state.phase === "open" || view === "closed";
 
   const cancel = (formData: FormData) => {
@@ -152,9 +167,28 @@ export function RsvpPanel({
 
             {view === "signed-out" && (
               <Body>
-                <p>Sign in with your Google account to RSVP. We’ll use it to confirm your seat and remember your details next time.</p>
-                <GoogleSignIn next={`/events/${event.slug}#rsvp`} className="mt-5" />
+                <p>
+                  {event.audience === "iub"
+                    ? "This event is for IUB students. Sign in with your IUB Google account (your 7-digit ID @iub.edu.bd) to RSVP."
+                    : "Sign in with your Google account to RSVP. We’ll use it to confirm your seat and remember your details next time."}
+                </p>
+                <GoogleSignIn next={`/events/${event.slug}#rsvp`} iub={event.audience === "iub"} className="mt-5" />
                 {signInFailed && <ErrorText>Sign-in didn’t complete. Please try again.</ErrorText>}
+              </Body>
+            )}
+
+            {view === "wrong-account" && state.viewer && (
+              <Body>
+                <p>
+                  This event is open to IUB students only, but you’re signed in as{" "}
+                  <span className="text-fg">{state.viewer.email}</span>. Sign in with your IUB account (your 7-digit ID @iub.edu.bd) to RSVP.
+                </p>
+                <form action={signOut} className="mt-5">
+                  <input type="hidden" name="next" value={`/events/${event.slug}`} />
+                  <button type="submit" className="btn-pill btn-ghost w-full">
+                    Sign out and switch account
+                  </button>
+                </form>
               </Body>
             )}
 
@@ -185,15 +219,21 @@ export function RsvpPanel({
                     defaultValue={result.values?.name ?? state.viewer.name}
                     error={result.fieldErrors?.name}
                   />
-                  <Field
-                    label="IUB student ID (leave empty if you’re not at IUB)"
-                    name="studentId"
-                    inputMode="numeric"
-                    maxLength={7}
-                    placeholder="7 digits"
-                    defaultValue={result.values?.studentId ?? state.viewer.studentId}
-                    error={result.fieldErrors?.studentId}
-                  />
+                  {rsvpStandardFields
+                    .filter((f) => event.fields[f])
+                    .map((f) => (
+                      <StandardField
+                        key={f}
+                        field={f}
+                        required={event.fields[f] === "required"}
+                        viewer={state.viewer ?? undefined}
+                        value={result.values?.[f === "student_id" ? "studentId" : f]}
+                        error={result.fieldErrors?.[f === "student_id" ? "studentId" : f]}
+                      />
+                    ))}
+                  {event.questions.map((q) => (
+                    <QuestionField key={q.id} question={q} value={result.values?.[q.id]} error={result.fieldErrors?.[q.id]} />
+                  ))}
                   {state.mode === "preview" && (
                     <Field
                       label="Email"
@@ -317,7 +357,7 @@ function Field({
   ...input
 }: {
   label: string;
-  name: RsvpField;
+  name: string;
   error?: string;
   className?: string;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "name">) {
@@ -345,6 +385,107 @@ function Field({
         </p>
       )}
     </div>
+  );
+}
+
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+const withOptional = (label: string, required: boolean) => (required ? label : `${label} (optional)`);
+
+const inputClasses = (error?: string) =>
+  cn(
+    "w-full rounded-[12px] border bg-white/[0.04] px-4 text-base text-fg transition-[border-color,background-color] duration-200 placeholder:text-muted/70 hover:bg-white/[0.06] focus:border-flare focus:outline-none",
+    error ? "border-[#ff8f7a]/70" : "border-glass-border",
+  );
+
+/** A configurable standard field (student ID, department, phone, blood group), prefilled from the member's profile. */
+function StandardField({
+  field,
+  required,
+  viewer,
+  value,
+  error,
+}: {
+  field: RsvpStandardField;
+  required: boolean;
+  viewer?: RsvpViewer;
+  value?: string;
+  error?: string;
+}) {
+  const prefill =
+    field === "student_id" ? viewer?.studentId : field === "department" ? viewer?.department : field === "phone" ? viewer?.phone : viewer?.bloodGroup;
+  const defaultValue = value ?? prefill ?? "";
+  const label = withOptional(rsvpFieldLabels[field], required);
+  if (field === "blood_group") {
+    return <SelectField label={label} name="blood_group" defaultValue={defaultValue} options={BLOOD_GROUPS} error={error} placeholder="Select" />;
+  }
+  if (field === "student_id") {
+    return <Field label={label} name="studentId" inputMode="numeric" maxLength={7} placeholder="7 digits" defaultValue={defaultValue} error={error} />;
+  }
+  if (field === "phone") {
+    return <Field label={label} name="phone" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" defaultValue={defaultValue} error={error} />;
+  }
+  return <Field label={label} name="department" defaultValue={defaultValue} error={error} />;
+}
+
+/** A custom question: short text, long text, single choice, or multiple choice. */
+function QuestionField({ question: q, value, error }: { question: RsvpQuestion; value?: string; error?: string }) {
+  const label = withOptional(q.label, q.required);
+  if (q.type === "long") return <TextAreaField label={label} name={q.id} defaultValue={value} error={error} />;
+  if (q.type === "select") return <SelectField label={label} name={q.id} defaultValue={value} options={q.options} error={error} placeholder="Choose…" />;
+  if (q.type === "checkbox") return <CheckboxGroup label={label} name={q.id} options={q.options} error={error} />;
+  return <Field label={label} name={q.id} defaultValue={value} error={error} />;
+}
+
+function FieldShell({ label, htmlFor, error, children }: { label: string; htmlFor?: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[0.85rem] font-normal text-muted">
+        {label}
+      </label>
+      {children}
+      {error && <p className="mt-1.5 text-[0.85rem] text-[#ff8f7a]">{error}</p>}
+    </div>
+  );
+}
+
+function SelectField({ label, name, options, defaultValue, placeholder, error }: { label: string; name: string; options: string[]; defaultValue?: string; placeholder?: string; error?: string }) {
+  const id = useId();
+  return (
+    <FieldShell label={label} htmlFor={id} error={error}>
+      <select id={id} name={name} defaultValue={defaultValue ?? ""} aria-invalid={error ? true : undefined} className={cn(inputClasses(error), "h-12 appearance-none bg-[#141110]")}>
+        <option value="">{placeholder ?? "Select"}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </FieldShell>
+  );
+}
+
+function TextAreaField({ label, name, defaultValue, error }: { label: string; name: string; defaultValue?: string; error?: string }) {
+  const id = useId();
+  return (
+    <FieldShell label={label} htmlFor={id} error={error}>
+      <textarea id={id} name={name} rows={3} defaultValue={defaultValue ?? ""} aria-invalid={error ? true : undefined} className={cn(inputClasses(error), "resize-y py-3")} />
+    </FieldShell>
+  );
+}
+
+function CheckboxGroup({ label, name, options, error }: { label: string; name: string; options: string[]; error?: string }) {
+  return (
+    <FieldShell label={label} error={error}>
+      <div className="grid gap-2">
+        {options.map((o) => (
+          <label key={o} className="flex items-center gap-2.5 text-[0.95rem] text-body">
+            <input type="checkbox" name={name} value={o} className="size-4 rounded border-glass-border bg-white/[0.04] accent-flare" />
+            {o}
+          </label>
+        ))}
+      </div>
+    </FieldShell>
   );
 }
 

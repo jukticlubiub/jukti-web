@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { samplePhotos, sampleEvents } from "@/lib/data/events";
 import { supabaseEnv } from "@/lib/supabase/config";
 import { createPublicClient } from "@/lib/supabase/server";
-import { eventCategories, type EventCategory, type EventPhoto, type EventSeats, type JuktiEvent } from "./types";
+import { eventCategories, type EventCategory, type EventPhoto, type EventSeats, type JuktiEvent, parseRsvpFields, parseRsvpQuestions } from "./types";
 
 /** Cache tag for everything event-related. Invalidate it after any change to events or RSVPs. */
 export const EVENTS_TAG = "events";
@@ -25,6 +25,9 @@ type EventRow = {
   rsvp_enabled: boolean;
   rsvp_deadline: string | null;
   capacity: number | null;
+  audience: string;
+  rsvp_fields: unknown;
+  rsvp_questions: unknown;
   fee_amount: number | null;
   fee_bkash_number: string | null;
   fee_note: string | null;
@@ -34,7 +37,7 @@ type EventRow = {
 type CountRow = { event_id: string; registered: number; waitlisted: number };
 
 const EVENT_COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
 
 function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
   const category = (eventCategories as readonly string[]).includes(row.category)
@@ -59,6 +62,9 @@ function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
       capacity: row.capacity,
       registered: counts?.registered ?? 0,
       waitlisted: counts?.waitlisted ?? 0,
+      audience: row.audience === "open" ? "open" : "iub",
+      fields: parseRsvpFields(row.rsvp_fields),
+      questions: parseRsvpQuestions(row.rsvp_questions),
     },
     fee: row.fee_amount && row.fee_amount > 0 ? { amount: row.fee_amount, bkashNumber: row.fee_bkash_number, note: row.fee_note } : null,
     photoCount: row.event_photos[0]?.count ?? 0,

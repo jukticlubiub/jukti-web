@@ -6,7 +6,7 @@ import { z } from "zod";
 import { emailPaymentConfirmed } from "@/lib/events/emails";
 import { EVENTS_TAG } from "@/lib/events/queries";
 import { getAdminEvent } from "../data/events";
-import { eventCategories } from "@/lib/events/types";
+import { eventCategories, rsvpStandardFields, type RsvpFields, type RsvpQuestion, type RsvpQuestionType } from "@/lib/events/types";
 import { type ActionState, bool, explainDbError, failed, fieldErrors, fromDhakaInput, ok, optional, slugify, str } from "../form";
 import { guard } from "../guard";
 import { keepImageOr } from "../remote-image";
@@ -39,6 +39,44 @@ const eventSchema = z
   .refine((e) => Date.parse(e.endsAt) > Date.parse(e.startsAt), { message: "It must end after it starts.", path: ["endsAt"] });
 
 /** Agenda lines: "3:00 PM | Welcome | optional detail". */
+/** Custom RSVP questions from the textarea: one per line, `label | type | options | required`. */
+function parseQuestions(text: string): RsvpQuestion[] {
+  const used = new Set<string>();
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .flatMap((line): RsvpQuestion[] => {
+      const [label = "", typeRaw = "", optionsRaw = "", flag = ""] = line.split("|").map((s) => s.trim());
+      if (!label) return [];
+      const t = typeRaw.toLowerCase();
+      const type: RsvpQuestionType = t.startsWith("long") || t.startsWith("para")
+        ? "long"
+        : t.startsWith("select") || t.startsWith("dropdown") || t.startsWith("choose one")
+          ? "select"
+          : t.startsWith("check") || t.startsWith("multi") || t.startsWith("choose any")
+            ? "checkbox"
+            : "short";
+      const options = type === "select" || type === "checkbox" ? optionsRaw.split(",").map((o) => o.trim()).filter(Boolean).slice(0, 20).map((o) => o.slice(0, 80)) : [];
+      const required = /\brequired\b/i.test(flag) || ((type === "short" || type === "long") && /\brequired\b/i.test(optionsRaw));
+      let id = `q_${slugify(label).slice(0, 30) || "question"}`;
+      let n = 1;
+      while (used.has(id)) id = `q_${slugify(label).slice(0, 28) || "question"}-${++n}`;
+      used.add(id);
+      return [{ id, label: label.slice(0, 120), type, options, required }];
+    });
+}
+
+/** The standard field selects (field_student_id, …) into the stored config; "off" means not collected. */
+function parseRsvpFieldsForm(fd: FormData): RsvpFields {
+  const out: RsvpFields = {};
+  for (const f of rsvpStandardFields) {
+    const mode = str(fd, `field_${f}`);
+    if (mode === "optional" || mode === "required") out[f] = mode;
+  }
+  return out;
+}
+
 function parseAgenda(text: string) {
   return text
     .split("\n")
@@ -97,6 +135,9 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     rsvp_enabled: e.rsvpEnabled,
     rsvp_deadline: e.rsvpDeadline,
     capacity: e.capacity,
+    audience: str(fd, "audience") === "open" ? "open" : "iub",
+    rsvp_fields: parseRsvpFieldsForm(fd),
+    rsvp_questions: parseQuestions(str(fd, "questions")),
     fee_amount: e.feeAmount || null,
     fee_bkash_number: e.feeBkashNumber,
     fee_note: e.feeNote,

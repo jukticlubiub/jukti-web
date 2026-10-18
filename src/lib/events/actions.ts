@@ -7,14 +7,15 @@ import { createSessionClient } from "@/lib/supabase/server";
 import { EVENTS_TAG, getEventById } from "./queries";
 import { emailRsvpConfirmation } from "./emails";
 import { getRsvpState, previewCancel, previewPay, previewRegister, rsvpMode, type RsvpState } from "./rsvp";
+import { rsvpStandardFields } from "./types";
 
-export type RsvpField = "name" | "studentId" | "email" | "sender" | "txn";
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export type RsvpFormState = {
   state: RsvpState;
-  /** What the visitor typed, so a rejected form keeps it. */
-  values?: Partial<Record<RsvpField, string>>;
-  fieldErrors?: Partial<Record<RsvpField, string>>;
+  /** What the visitor typed, so a rejected form keeps it. Keyed by field/question name. */
+  values?: Record<string, string>;
+  fieldErrors?: Record<string, string>;
   error?: string;
   /** What just happened, for the confirmation message. */
   done?: "registered" | "waitlisted" | "cancelled" | "paid";
@@ -35,6 +36,8 @@ const previewDetails = details.extend({
 // Errors raised by register_for_event() / cancel_event_registration().
 const serverErrors: Record<string, string> = {
   not_authenticated: "Your session has expired. Sign in again to RSVP.",
+  iub_only: "This event is for IUB students. Sign in with your @iub.edu.bd account.",
+  invalid_fields: "Some answers need fixing. Check the form and try again.",
   invalid_name: "Enter your full name.",
   invalid_student_id: "Your IUB student ID is 7 digits (or leave it empty if you’re not at IUB).",
   event_not_found: "This event isn't available any more.",
@@ -78,7 +81,7 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     const parsed = payment.safeParse(values);
     if (!parsed.success) {
       const fieldErrors: RsvpFormState["fieldErrors"] = {};
-      for (const issue of parsed.error.issues) fieldErrors[issue.path[0] as RsvpField] ??= issue.message;
+      for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0])] ??= issue.message;
       return { state: previous.state, values, fieldErrors };
     }
     if (mode === "preview") {
@@ -103,25 +106,72 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     return fresh({ done: "cancelled" });
   }
 
-  const values = {
+  const values: Record<string, string> = {
     name: String(formData.get("name") ?? ""),
     studentId: String(formData.get("studentId") ?? ""),
     email: String(formData.get("email") ?? ""),
   };
-  const parsed = (mode === "preview" ? previewDetails : details).safeParse(values);
-  if (!parsed.success) {
-    const fieldErrors: RsvpFormState["fieldErrors"] = {};
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0] as RsvpField;
-      fieldErrors[field] ??= issue.message;
+  const base = (mode === "preview" ? previewDetails : details).safeParse(values);
+  const fieldErrors: Record<string, string> = {};
+  if (!base.success) for (const issue of base.error.issues) fieldErrors[String(issue.path[0])] ??= issue.message;
+
+  // Standard optional fields and custom questions, per this event's RSVP config.
+  const answers: Record<string, unknown> = {};
+  const viewerEmail = previous.state.viewer?.email ?? "";
+  const studentIdFromIub = /^[0-9]{7}@iub\.edu\.bd$/i.test(viewerEmail);
+  if (event.rsvp.fields.student_id === "required" && !values.studentId.trim() && !studentIdFromIub) {
+    fieldErrors.studentId ??= "Your IUB student ID is required for this event.";
+  }
+  for (const f of rsvpStandardFields) {
+    if (f === "student_id") continue;
+    const cfg = event.rsvp.fields[f];
+    if (!cfg) continue;
+    const raw = String(formData.get(f) ?? "").trim();
+    values[f] = raw;
+    if (!raw) {
+      if (cfg === "required") fieldErrors[f] ??= "This is required.";
+      continue;
     }
+    if (f === "phone") {
+      const digits = raw.replace(/[\s-]/g, "");
+      if (!/^(\+?88)?01[3-9]\d{8}$/.test(digits)) fieldErrors[f] ??= "Enter a valid Bangladeshi mobile number.";
+      else answers[f] = digits;
+    } else if (f === "blood_group") {
+      if (!BLOOD_GROUPS.includes(raw)) fieldErrors[f] ??= "Choose a blood group.";
+      else answers[f] = raw;
+    } else {
+      answers[f] = raw.slice(0, 120);
+    }
+  }
+  for (const q of event.rsvp.questions) {
+    if (q.type === "checkbox") {
+      const picked = formData.getAll(q.id).map(String).map((v) => v.trim()).filter((v) => q.options.includes(v));
+      if (picked.length === 0) {
+        if (q.required) fieldErrors[q.id] ??= "Please choose at least one.";
+      } else {
+        answers[q.id] = picked;
+      }
+    } else {
+      const v = String(formData.get(q.id) ?? "").trim();
+      values[q.id] = v;
+      if (!v) {
+        if (q.required) fieldErrors[q.id] ??= "This is required.";
+      } else if (q.type === "select" && !q.options.includes(v)) {
+        fieldErrors[q.id] ??= "Choose an option from the list.";
+      } else {
+        answers[q.id] = v.slice(0, 2000);
+      }
+    }
+  }
+
+  if (!base.success || Object.keys(fieldErrors).length > 0) {
     return { state: previous.state, values, fieldErrors };
   }
 
   let isNew = true;
   if (mode === "preview") {
     isNew = !previous.state.registration;
-    await previewRegister(event, { name: parsed.data.name, studentId: parsed.data.studentId, email: values.email.trim() });
+    await previewRegister(event, { name: base.data.name, studentId: base.data.studentId, email: values.email.trim() });
   } else {
     const supabase = await createSessionClient();
     // Only a new RSVP gets the confirmation email (not updating your details).
@@ -129,8 +179,9 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     isNew = !before;
     const { error } = await supabase.rpc("register_for_event", {
       p_event_id: event.id,
-      p_full_name: parsed.data.name,
-      p_student_id: parsed.data.studentId,
+      p_full_name: base.data.name,
+      p_student_id: base.data.studentId,
+      p_answers: answers,
     });
     if (error) return fresh({ values, error: explain(error.message) });
     updateTag(EVENTS_TAG);
@@ -140,7 +191,7 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
   const rsvp = next.state.registration;
   const email = mode === "preview" ? values.email.trim() : next.state.viewer?.email;
   if (isNew && rsvp?.ticketCode && email) {
-    const to = { email, name: parsed.data.name };
+    const to = { email, name: base.data.name };
     const ticket = { status: rsvp.status, position: rsvp.position, ticketCode: rsvp.ticketCode };
     after(() => emailRsvpConfirmation(event, to, ticket).catch((e) => console.error("RSVP email failed:", e)));
   }

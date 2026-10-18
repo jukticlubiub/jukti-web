@@ -1,15 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { cancelRegistration, setPaid, toggleCheckIn } from "@/lib/admin/actions/events";
 import type { Registration } from "@/lib/admin/data/events";
 import { cn } from "@/lib/cn";
+import { rsvpFieldLabels, type RsvpQuestion, rsvpStandardFields } from "@/lib/events/types";
 import { ActionButton, inputClass } from "../forms";
+
+/** Turn a registration's stored answers into labelled rows, using the event's question labels. */
+function answerRows(answers: Record<string, unknown>, questions: RsvpQuestion[]): { label: string; value: string }[] {
+  const labels = new Map<string, string>();
+  for (const f of rsvpStandardFields) labels.set(f, rsvpFieldLabels[f]);
+  for (const q of questions) labels.set(q.id, q.label);
+  return Object.entries(answers)
+    .filter(([, v]) => v != null && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== ""))
+    .map(([key, v]) => ({ label: labels.get(key) ?? key, value: Array.isArray(v) ? v.join(", ") : String(v) }));
+}
 
 const tone = { registered: "text-emerald-300", waitlisted: "text-sky-300", cancelled: "text-muted line-through" } as const;
 
 /** Everyone who RSVP'd: search, check people in at the door, cancel a seat (Event Manager). */
-export function RsvpTable({ registrations, csvHref }: { registrations: Registration[]; csvHref: string }) {
+export function RsvpTable({ registrations, questions, csvHref }: { registrations: Registration[]; questions: RsvpQuestion[]; csvHref: string }) {
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<"active" | "all" | "payment">("active");
   const hasFee = registrations.some((r) => r.payment.status !== "not_required");
@@ -19,7 +31,12 @@ export function RsvpTable({ registrations, csvHref }: { registrations: Registrat
       (r) =>
         (show === "all" || r.status !== "cancelled") &&
         (show !== "payment" || r.payment.status === "submitted" || r.payment.status === "unpaid") &&
-        (!q || `${r.fullName} ${r.email} ${r.studentId} ${r.ticketCode} ${r.payment.sender ?? ""} ${r.payment.txn ?? ""}`.toLowerCase().includes(q)),
+        (!q ||
+          `${r.fullName} ${r.email} ${r.studentId} ${r.ticketCode} ${r.payment.sender ?? ""} ${r.payment.txn ?? ""} ${Object.values(r.answers)
+            .map((v) => (Array.isArray(v) ? v.join(" ") : String(v)))
+            .join(" ")}`
+            .toLowerCase()
+            .includes(q)),
     );
   }, [registrations, query, show]);
   const count = (s: Registration["status"]) => registrations.filter((r) => r.status === s).length;
@@ -71,6 +88,27 @@ export function RsvpTable({ registrations, csvHref }: { registrations: Registrat
                     <span className="block text-fg">{r.fullName}</span>
                     <span className="block text-[0.8rem] text-muted">{r.email}</span>
                     <span className="block font-mono text-[0.78rem] text-muted">{r.ticketCode}</span>
+                    {r.isMember && (
+                      <Link href={`/admin/members/${r.userId}`} className="mt-0.5 inline-block text-[0.78rem] text-flare underline-offset-4 hover:underline">
+                        View profile ↗
+                      </Link>
+                    )}
+                    {(() => {
+                      const rows = answerRows(r.answers, questions);
+                      return rows.length > 0 ? (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[0.78rem] text-muted hover:text-fg">Answers ({rows.length})</summary>
+                          <dl className="mt-1.5 grid gap-1 border-l border-glass-border pl-3">
+                            {rows.map((a) => (
+                              <div key={a.label}>
+                                <dt className="text-[0.72rem] tracking-[0.04em] text-muted uppercase">{a.label}</dt>
+                                <dd className="text-[0.85rem] text-body">{a.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </details>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-4 py-2.5 tabular-nums">{r.studentId || <span className="text-muted">Guest</span>}</td>
                   <td className={cn("px-4 py-2.5 capitalize", tone[r.status])}>

@@ -1,6 +1,9 @@
 import { getAdmin } from "@/lib/admin/access";
 import { getAdminEvent, getRegistrations, getStationScans, getStations } from "@/lib/admin/data/events";
 import { canAccess } from "@/lib/admin/roles";
+import { rsvpFieldLabels, rsvpStandardFields } from "@/lib/events/types";
+
+const answerCell = (v: unknown) => (Array.isArray(v) ? v.join("; ") : v == null ? "" : String(v));
 
 /** Quotes a cell, and stops spreadsheet apps running typed-in text that starts like a formula. */
 const csvCell = (raw: string) => {
@@ -17,8 +20,13 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/events/[i
   if (!event) return new Response("Not found", { status: 404 });
   const [rows, stations] = await Promise.all([getRegistrations(admin, id), getStations(admin, id)]);
   const scans = await getStationScans(admin, stations);
+  // Dynamic columns for the event's configured fields + custom questions (student ID has its own column).
+  const answerCols = [
+    ...rsvpStandardFields.filter((f) => f !== "student_id" && event.rsvp.fields[f]).map((f) => ({ key: f as string, label: rsvpFieldLabels[f] })),
+    ...event.rsvp.questions.map((q) => ({ key: q.id, label: q.label })),
+  ];
   const lines = [
-    ["Name", "Email", "Student ID", "Ticket", "Status", "Payment", "bKash sender", "bKash TxID", "Paid at", "Signed up", "Checked in", ...stations.map((s) => s.name)].join(","),
+    ["Name", "Email", "Student ID", "Ticket", "Status", "Payment", "bKash sender", "bKash TxID", "Paid at", "Signed up", "Checked in", ...answerCols.map((c) => c.label), ...stations.map((s) => s.name)].join(","),
     ...rows.map((r) =>
       [
         r.fullName,
@@ -32,6 +40,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/events/[i
         r.payment.paidAt ?? "",
         r.createdAt,
         r.checkedInAt ?? "",
+        ...answerCols.map((c) => answerCell(r.answers[c.key])),
         ...stations.map((s) => scans.get(r.id)?.[s.id] ?? ""),
       ]
         .map(csvCell)

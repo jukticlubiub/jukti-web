@@ -13,7 +13,7 @@ type SampleEvent = Omit<JuktiEvent, "id" | "photoCount" | "rsvp"> & {
   photos?: number;
 };
 
-const noRsvp: JuktiEvent["rsvp"] = { enabled: false, deadline: null, capacity: null, registered: 0, waitlisted: 0 };
+const noRsvp: JuktiEvent["rsvp"] = { enabled: false, deadline: null, capacity: null, registered: 0, waitlisted: 0, audience: "iub", fields: {}, questions: [] };
 
 const samples: SampleEvent[] = [
   {
@@ -93,7 +93,20 @@ const samples: SampleEvent[] = [
       { time: "Sun 8:00 AM", title: "Demos and awards" },
     ],
     recap: null,
-    rsvp: { enabled: true, deadline: "2026-10-20T23:59:00+06:00", capacity: 120, registered: 120, waitlisted: 9 },
+    rsvp: {
+      enabled: true,
+      deadline: "2026-10-20T23:59:00+06:00",
+      capacity: 120,
+      registered: 120,
+      waitlisted: 9,
+      audience: "open",
+      fields: { department: "optional", phone: "required", blood_group: "optional" },
+      questions: [
+        { id: "q_team", label: "Team name (if you have one)", type: "short", options: [], required: false },
+        { id: "q_track", label: "Which track?", type: "select", options: ["AI/ML", "Web", "Mobile", "Open"], required: true },
+        { id: "q_needs", label: "Dietary needs", type: "checkbox", options: ["Halal", "Vegetarian", "None"], required: false },
+      ],
+    },
   },
   {
     slug: "freshers-game-night",
