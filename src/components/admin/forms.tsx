@@ -224,7 +224,7 @@ export function ActionButton({
           </button>
           {confirm && (
             <button type="button" onClick={() => setAsking(false)} className="text-[0.8rem] text-muted hover:text-fg">
-              Cancel
+              No
             </button>
           )}
         </>
