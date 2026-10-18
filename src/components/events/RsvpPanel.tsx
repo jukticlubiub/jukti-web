@@ -483,15 +483,17 @@ function CompleteMembership({
     const asked = gap in profileGapField ? profileGapField[gap as keyof typeof profileGapField] : null;
     return !(asked && fields[asked]);
   });
+  const titleId = useId();
   if (gaps.length === 0) return null;
   const value = (gap: string) => values?.[profileGapInput(gap)];
   const error = (gap: string) => errors?.[profileGapInput(gap)];
 
   return (
-    <fieldset className="grid gap-4 rounded-[14px] border border-flare/30 bg-lava/[0.07] p-4 sm:p-5">
-      <legend className="sr-only">Complete your JUKTI membership</legend>
+    <fieldset aria-labelledby={titleId} className="grid gap-4 rounded-[14px] border border-flare/30 bg-lava/[0.07] p-4 sm:p-5">
       <div>
-        <p className="font-heading text-[1.02rem] text-fg">Complete your JUKTI membership</p>
+        <p id={titleId} className="font-heading text-[1.02rem] text-fg">
+          Complete your JUKTI membership
+        </p>
         <p className="mt-1.5 text-[0.9rem] leading-relaxed text-body">
           You’re already a JUKTI member. Add the details below to finish your profile. They’re saved with your RSVP.
         </p>

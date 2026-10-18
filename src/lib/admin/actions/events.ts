@@ -3,7 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
-import { emailPaymentConfirmed } from "@/lib/events/emails";
+import { emailPaymentConfirmed, emailRsvpConfirmation } from "@/lib/events/emails";
 import { EVENTS_TAG } from "@/lib/events/queries";
 import { getAdminEvent } from "../data/events";
 import { eventCategories, rsvpStandardFields, type RsvpFields, type RsvpQuestion, type RsvpQuestionType } from "@/lib/events/types";
@@ -244,6 +244,31 @@ export async function cancelRegistration(previous: ActionState, fd: FormData): P
   if (error) return failed(explainDbError(error.message));
   updateTag(EVENTS_TAG);
   return ok(previous, "RSVP cancelled.");
+}
+
+/** Give a waitlisted person a seat by hand, even past the capacity. Emails them their ticket. */
+export async function approveRegistration(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("events");
+  if (!g.ok) return g.state;
+  const id = str(fd, "id");
+  const { data: seats, error } = await g.db.rpc("admin_approve_registration", { p_registration_id: id });
+  if (error) {
+    if (error.message.includes("not_waitlisted")) return failed("They’re not on the waitlist any more. Refresh the list.");
+    return failed(explainDbError(error.message));
+  }
+  const { data: reg } = await g.db.from("event_registrations").select("event_id, full_name, email, ticket_code").eq("id", id).maybeSingle();
+  if (reg?.ticket_code) {
+    const event = await getAdminEvent(g.admin, reg.event_id as string);
+    if (event) {
+      const to = { email: reg.email as string, name: reg.full_name as string };
+      const ticket = { status: "registered" as const, position: null, ticketCode: reg.ticket_code as string };
+      after(() => emailRsvpConfirmation(event, to, ticket).catch((e) => console.error("Approval email failed:", e)));
+    }
+  }
+  updateTag(EVENTS_TAG);
+  const { registered, capacity } = (seats ?? {}) as { registered?: number; capacity?: number | null };
+  const over = capacity != null && registered != null && registered > capacity;
+  return ok(previous, over ? `Approved and emailed. ${registered} registered, over the ${capacity}-seat capacity.` : "Approved. We’ve emailed their ticket.");
 }
 
 /** Confirm (or undo) someone's event fee after checking the bKash statement. Confirming emails them. */

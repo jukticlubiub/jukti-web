@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { cancelRegistration, setPaid, toggleCheckIn } from "@/lib/admin/actions/events";
+import { approveRegistration, cancelRegistration, setPaid, toggleCheckIn } from "@/lib/admin/actions/events";
 import type { Registration } from "@/lib/admin/data/events";
 import { cn } from "@/lib/cn";
 import { rsvpFieldLabels, type RsvpQuestion, rsvpStandardFields } from "@/lib/events/types";
@@ -20,8 +20,18 @@ function answerRows(answers: Record<string, unknown>, questions: RsvpQuestion[])
 
 const tone = { registered: "text-emerald-300", waitlisted: "text-sky-300", cancelled: "text-muted line-through" } as const;
 
-/** Everyone who RSVP'd: search, check people in at the door, cancel a seat (Event Manager). */
-export function RsvpTable({ registrations, questions, csvHref }: { registrations: Registration[]; questions: RsvpQuestion[]; csvHref: string }) {
+/** Everyone who RSVP'd: search, check people in at the door, approve from the waitlist, cancel a seat (Event Manager). */
+export function RsvpTable({
+  registrations,
+  questions,
+  capacity,
+  csvHref,
+}: {
+  registrations: Registration[];
+  questions: RsvpQuestion[];
+  capacity: number | null;
+  csvHref: string;
+}) {
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<"active" | "all" | "payment">("active");
   const hasFee = registrations.some((r) => r.payment.status !== "not_required");
@@ -41,6 +51,10 @@ export function RsvpTable({ registrations, questions, csvHref }: { registrations
   }, [registrations, query, show]);
   const count = (s: Registration["status"]) => registrations.filter((r) => r.status === s).length;
   const checkedIn = registrations.filter((r) => r.checkedInAt && r.status === "registered").length;
+  const full = capacity !== null && count("registered") >= capacity;
+  const approveConfirm = full
+    ? `All ${capacity} seats are taken (${count("registered")} registered). Approve anyway? This goes over the capacity, and we’ll email them their ticket.`
+    : "Give them a seat? We’ll email them their ticket.";
 
   return (
     <div className="grid gap-4">
@@ -125,6 +139,9 @@ export function RsvpTable({ registrations, questions, csvHref }: { registrations
                       <div className="flex flex-wrap gap-1.5">
                         {r.status === "registered" && (
                           <ActionButton action={toggleCheckIn} fields={{ id: r.id, checkedIn: String(Boolean(r.checkedInAt)) }} label={r.checkedInAt ? "Undo check-in" : "Check in"} tone={r.checkedInAt ? "ghost" : "primary"} />
+                        )}
+                        {r.status === "waitlisted" && (
+                          <ActionButton action={approveRegistration} fields={{ id: r.id }} label="Approve" confirm={approveConfirm} tone="primary" />
                         )}
                         <ActionButton action={cancelRegistration} fields={{ id: r.id }} label="Cancel" confirm="Cancel this RSVP?" tone="danger" />
                       </div>

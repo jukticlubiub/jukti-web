@@ -98,7 +98,7 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
       {tab === "rsvps" && (
         <Panel>
           {event.rsvp.enabled || event.rsvp.registered > 0 ? (
-            <RsvpTable registrations={await getRegistrations(admin, event.id)} questions={event.rsvp.questions} csvHref={`/admin/events/${event.id}/rsvps.csv`} />
+            <RsvpTable registrations={await getRegistrations(admin, event.id)} questions={event.rsvp.questions} capacity={event.rsvp.capacity} csvHref={`/admin/events/${event.id}/rsvps.csv`} />
           ) : (
             <p className="text-[0.92rem] text-muted">RSVPs are off for this event. Turn them on in Details.</p>
           )}
