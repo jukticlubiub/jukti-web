@@ -139,6 +139,10 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     } else if (f === "blood_group") {
       if (!BLOOD_GROUPS.includes(raw)) fieldErrors[f] ??= "Choose a blood group.";
       else answers[f] = raw;
+    } else if (f === "facebook") {
+      if (raw.length > 300 || !/^https:\/\/([a-z0-9-]+\.)?(facebook\.com|fb\.com)\//i.test(raw)) {
+        fieldErrors[f] ??= "Paste your Facebook profile link (https://facebook.com/…).";
+      } else answers[f] = raw;
     } else {
       answers[f] = raw.slice(0, 120);
     }

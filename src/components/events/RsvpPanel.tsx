@@ -413,7 +413,15 @@ function StandardField({
   error?: string;
 }) {
   const prefill =
-    field === "student_id" ? viewer?.studentId : field === "department" ? viewer?.department : field === "phone" ? viewer?.phone : viewer?.bloodGroup;
+    field === "student_id"
+      ? viewer?.studentId
+      : field === "department"
+        ? viewer?.department
+        : field === "phone"
+          ? viewer?.phone
+          : field === "facebook"
+            ? viewer?.facebook
+            : viewer?.bloodGroup;
   const defaultValue = value ?? prefill ?? "";
   const label = withOptional(rsvpFieldLabels[field], required);
   if (field === "blood_group") {
@@ -421,6 +429,9 @@ function StandardField({
   }
   if (field === "student_id") {
     return <Field label={label} name="studentId" inputMode="numeric" maxLength={7} placeholder="7 digits" defaultValue={defaultValue} error={error} />;
+  }
+  if (field === "facebook") {
+    return <Field label={label} name="facebook" type="url" inputMode="url" placeholder="https://facebook.com/your.profile" defaultValue={defaultValue} error={error} />;
   }
   if (field === "phone") {
     return <Field label={label} name="phone" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" defaultValue={defaultValue} error={error} />;

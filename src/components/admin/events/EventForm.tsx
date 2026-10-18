@@ -80,7 +80,7 @@ export function EventForm({ event, live }: { event?: AdminEvent; live: boolean }
               <p className="text-[0.85rem] text-muted">What to ask (name &amp; email are always collected; IUB members have theirs filled in from their profile):</p>
               <div className="grid gap-5 sm:grid-cols-2">
                 {rsvpStandardFields.map((f) => (
-                  <Select key={f} label={rsvpFieldLabels[f]} name={`field_${f}`} state={state} defaultValue={event?.rsvp.fields[f] ?? "off"} options={fieldModes} />
+                  <Select key={f} label={rsvpFieldLabels[f]} name={`field_${f}`} state={state} defaultValue={event?.rsvp.fields[f] ?? (!event && f === "facebook" ? "required" : "off")} options={fieldModes} />
                 ))}
               </div>
             </div>

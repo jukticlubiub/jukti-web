@@ -66,7 +66,7 @@ async function EventDetail({ params, searchParams }: Pick<PageProps<"/events/[sl
   const event = await getEvent(slug);
   if (!event) notFound();
 
-  const photos = event.photoCount > 0 ? await getEventPhotos(event.id) : [];
+  const [photos, now] = await Promise.all([event.photoCount > 0 ? getEventPhotos(event.id) : [], requestTime()]);
   const path = eventPath(slug);
   const googleUrl = googleCalendarUrl(event, `${site.url}${path}`);
   const icsPath = calendarFilePath(slug);
@@ -123,15 +123,24 @@ async function EventDetail({ params, searchParams }: Pick<PageProps<"/events/[sl
         <Reveal immediate delay={0.2} className="relative">
           <div aria-hidden className="absolute -inset-[12%] rounded-full bg-[radial-gradient(closest-side,rgb(200_74_26/0.4),transparent)]" />
           <div className="glass-card relative p-2.5">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] max-lg:aspect-[16/11]">
-              <EventCover event={event} animated priority sizes="(max-width: 1024px) 100vw, 40vw" />
-              {/* The live countdown floats over the cover, so it can come and go without moving the page. */}
+            {event.cover ? (
+              // A real poster: shown whole, at its own shape (capped so a tall one still fits the screen).
+              <div className="relative overflow-hidden rounded-[14px] bg-black/30">
+                <EventCover event={event} natural priority sizes="(max-width: 1024px) 100vw, 40vw" className="max-h-[80svh] object-contain" />
+              </div>
+            ) : (
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] max-lg:aspect-[16/11]">
+                <EventCover event={event} animated priority sizes="(max-width: 1024px) 100vw, 40vw" />
+              </div>
+            )}
+            {/* Below the cover, not over it. Left out once the event is over (it would only vanish on load). */}
+            {Date.parse(event.endsAt) > now && (
               <Countdown
                 startsAt={event.startsAt}
                 endsAt={event.endsAt}
-                className="absolute inset-x-3 bottom-3 rounded-[16px] border border-white/10 bg-black/45 p-4 backdrop-blur-md sm:inset-x-4 sm:bottom-4 sm:p-5 [&_[role=timer]]:justify-between"
+                className="mt-2.5 rounded-[14px] border border-white/10 bg-black/30 p-4 sm:p-5 [&_[role=timer]]:justify-between"
               />
-            </div>
+            )}
           </div>
         </Reveal>
       </header>

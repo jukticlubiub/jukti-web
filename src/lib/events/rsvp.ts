@@ -55,6 +55,7 @@ export type RsvpViewer = {
   department?: string;
   phone?: string;
   bloodGroup?: string;
+  facebook?: string;
 };
 
 export type RsvpState = {
@@ -106,7 +107,7 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
     getLiveSeats(event),
     claims ? supabase.rpc("my_event_registration", { p_event_id: event.id }) : null,
     // Members' own profile fills the form first.
-    claims ? supabase.from("members").select("name, iub_id, department, contact_number, blood_group").eq("id", claims.sub).maybeSingle() : null,
+    claims ? supabase.from("members").select("name, iub_id, department, contact_number, blood_group, facebook_link").eq("id", claims.sub).maybeSingle() : null,
     // Their details from their last RSVP, so the form is filled in next time.
     claims
       ? supabase
@@ -131,6 +132,7 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
       department: member?.data?.department || "",
       phone: member?.data?.contact_number || "",
       bloodGroup: member?.data?.blood_group || "",
+      facebook: member?.data?.facebook_link || "",
     },
     registration: toRegistration(mine?.data as RegistrationRow | null),
   };

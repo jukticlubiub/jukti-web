@@ -18,13 +18,14 @@ export type AgendaItem = { time: string; title: string; detail?: string };
 export type EventAudience = "iub" | "open";
 
 /** Standard fields an event can collect beyond name + email. Stored in event_registrations.answers. */
-export const rsvpStandardFields = ["student_id", "department", "phone", "blood_group"] as const;
+export const rsvpStandardFields = ["student_id", "department", "phone", "blood_group", "facebook"] as const;
 export type RsvpStandardField = (typeof rsvpStandardFields)[number];
 export const rsvpFieldLabels: Record<RsvpStandardField, string> = {
   student_id: "IUB student ID",
   department: "Department",
   phone: "Phone number",
   blood_group: "Blood group",
+  facebook: "Facebook profile link",
 };
 /** How a standard field is collected. A field absent from the config isn't collected at all. */
 export type RsvpFieldMode = "optional" | "required";
