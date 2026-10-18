@@ -19,11 +19,12 @@ export async function GET(request: NextRequest) {
       //
       // claim_member_import() is the same idempotent call the pages use: 'member' if they already
       // are one, 'claimed' if this is an imported member's first sign-in (it activates them now,
-      // so they skip the bounce too), null if they still need to register. Any other failure just
-      // falls back to `next`, whose page claims on its own — no worse than before.
+      // so they skip the bounce too), null if they still need to register. Run on every sign-in,
+      // not just /join: an imported member signing in to RSVP becomes a member right away.
+      // Any failure just falls back to `next`, whose page claims on its own.
+      const { data: claim } = await supabase.rpc("claim_member_import");
       let dest = next;
       if (next === "/join" || next === "/account") {
-        const { data: claim } = await supabase.rpc("claim_member_import");
         dest = claim === "member" || claim === "claimed" ? "/account" : "/join";
       }
       return NextResponse.redirect(new URL(dest, origin));

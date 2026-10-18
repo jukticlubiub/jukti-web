@@ -3,11 +3,12 @@
 import { updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
+import { MEMBERS_TAG } from "@/lib/members/public";
 import { createSessionClient } from "@/lib/supabase/server";
 import { EVENTS_TAG, getEventById } from "./queries";
 import { emailRsvpConfirmation } from "./emails";
 import { getRsvpState, previewCancel, previewPay, previewRegister, rsvpMode, type RsvpState } from "./rsvp";
-import { rsvpStandardFields } from "./types";
+import { profileGapField, profileGapInput, rsvpStandardFields } from "./types";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
@@ -61,6 +62,17 @@ const payment = z.object({
     .toUpperCase()
     .refine((v) => v === "" || /^[A-Z0-9]{8,12}$/.test(v), "A bKash transaction ID is 8–12 letters and numbers."),
 });
+
+// Errors raised by complete_my_profile(), by form field.
+const profileErrors: Record<string, [field: string, message: string]> = {
+  invalid_department: ["m_department", "Enter your department."],
+  invalid_residence: ["residence_area", "Enter where you live (area)."],
+  invalid_phone: ["contact_number", "Enter a Bangladeshi mobile number, e.g. 01712345678."],
+  invalid_secondary_email: ["secondary_email", "Enter a personal email address."],
+  secondary_email_is_iub: ["secondary_email", "Use a personal address, not your IUB one."],
+  photo_required: ["photo_url", "Add a photo of yourself."],
+  invalid_photo: ["photo_url", "That photo couldn't be used. Upload it again."],
+};
 
 function explain(message: string) {
   return serverErrors[message] ?? "Something went wrong. Please try again.";
@@ -168,6 +180,44 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     }
   }
 
+  // A member with an incomplete profile (usually imported, here for the first time) finishes it with the RSVP.
+  const profile: Record<string, string> = {};
+  for (const gap of previous.state.viewer?.profileGaps ?? []) {
+    const asked = gap in profileGapField ? profileGapField[gap as keyof typeof profileGapField] : null;
+    if (asked && event.rsvp.fields[asked]) {
+      // Validated above as the event's own field; here it just can't be left empty.
+      const answer = answers[asked];
+      if (typeof answer === "string" && answer) profile[gap] = answer;
+      else fieldErrors[asked] ??= "This is required to complete your membership.";
+      continue;
+    }
+    const input = profileGapInput(gap);
+    const raw = String(formData.get(input) ?? "").trim();
+    values[input] = raw;
+    if (gap === "photo_url") {
+      if (!raw) fieldErrors[input] = "Add a photo of yourself.";
+      else if (raw.length > 500 || !raw.startsWith("https://")) fieldErrors[input] = "That photo couldn't be used. Upload it again.";
+    } else if (gap === "secondary_email") {
+      const email = raw.toLowerCase();
+      if (!z.email().safeParse(email).success) fieldErrors[input] = "Enter a personal email address.";
+      else if (email.endsWith("@iub.edu.bd")) fieldErrors[input] = "Use a personal address, not your IUB one: you'll lose IUB email after graduation.";
+    } else if (gap === "contact_number") {
+      const digits = raw.replace(/[\s-]/g, "");
+      if (!/^(\+?88)?01[3-9]\d{8}$/.test(digits)) fieldErrors[input] = "Enter a Bangladeshi mobile number, e.g. 01712345678.";
+      else {
+        profile[gap] = digits;
+        continue;
+      }
+    } else if (gap === "department") {
+      if (!raw) fieldErrors[input] = "Enter your department.";
+      else if (raw.length > 80) fieldErrors[input] = "That's too long.";
+    } else if (gap === "residence_area") {
+      if (!raw) fieldErrors[input] = "Enter where you live (area).";
+      else if (raw.length > 120) fieldErrors[input] = "That's too long.";
+    }
+    if (!fieldErrors[input]) profile[gap] = raw;
+  }
+
   if (!base.success || Object.keys(fieldErrors).length > 0) {
     return { state: previous.state, values, fieldErrors };
   }
@@ -178,6 +228,16 @@ export async function rsvpAction(previous: RsvpFormState, formData: FormData): P
     await previewRegister(event, { name: base.data.name, studentId: base.data.studentId, email: values.email.trim() });
   } else {
     const supabase = await createSessionClient();
+    if (Object.keys(profile).length > 0) {
+      const { error } = await supabase.rpc("complete_my_profile", { p: profile });
+      if (error) {
+        const code = Object.keys(profileErrors).find((c) => error.message.includes(c));
+        if (!code) return fresh({ values, error: "Your profile couldn't be saved. Please try again." });
+        const [field, message] = profileErrors[code];
+        return { state: previous.state, values, fieldErrors: { [field]: message } };
+      }
+      updateTag(MEMBERS_TAG);
+    }
     // Only a new RSVP gets the confirmation email (not updating your details).
     const { data: before } = await supabase.rpc("my_event_registration", { p_event_id: event.id });
     isNew = !before;

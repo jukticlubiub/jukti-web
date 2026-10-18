@@ -47,10 +47,21 @@ export function toRegistration(row: RegistrationRow | null | undefined): RsvpReg
   };
 }
 
+/** Profile details a JUKTI member must have; the RSVP form asks for any that are missing. */
+export const memberProfileGaps = ["photo_url", "secondary_email", "contact_number", "department", "residence_area"] as const;
+export type MemberProfileGap = (typeof memberProfileGaps)[number];
+
 export type RsvpViewer = {
   name: string;
   email: string;
   studentId: string;
+  /** The auth user, for the photo upload's folder. */
+  userId?: string;
+  /**
+   * A JUKTI member whose profile isn't complete (usually an imported member, on their first visit):
+   * the RSVP form asks for these too, so they finish signing up and RSVP at once.
+   */
+  profileGaps?: MemberProfileGap[];
   /** Prefill for configurable fields, from the member's profile when they have one. */
   department?: string;
   phone?: string;
@@ -103,11 +114,18 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  const [seats, mine, member, previous] = await Promise.all([
+  const loadMember = () =>
+    supabase
+      .from("members")
+      .select("name, iub_id, department, contact_number, blood_group, facebook_link, residence_area, secondary_email, photo_url")
+      .eq("id", claims!.sub)
+      .maybeSingle();
+
+  const [seats, mine, loaded, previous] = await Promise.all([
     getLiveSeats(event),
     claims ? supabase.rpc("my_event_registration", { p_event_id: event.id }) : null,
     // Members' own profile fills the form first.
-    claims ? supabase.from("members").select("name, iub_id, department, contact_number, blood_group, facebook_link").eq("id", claims.sub).maybeSingle() : null,
+    claims ? loadMember() : null,
     // Their details from their last RSVP, so the form is filled in next time.
     claims
       ? supabase
@@ -121,6 +139,19 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
   ]);
 
   if (!claims) return { seats, viewer: null, registration: null };
+  let member = loaded;
+
+  // Imported from the registration app (already paid) but not signed in here before: they become a member now.
+  if (!member?.data) {
+    const { data: claimed } = await supabase.rpc("claim_member_import");
+    if (claimed === "claimed") member = await loadMember();
+  }
+  const m = member?.data;
+  const profileGaps = m
+    ? memberProfileGaps.filter((gap) =>
+        gap === "contact_number" ? !/^(\+?88)?01[3-9]\d{8}$/.test(m.contact_number ?? "") : !String(m[gap] ?? "").trim(),
+      )
+    : undefined;
 
   const metadata = (claims.user_metadata ?? {}) as { full_name?: string; name?: string };
   return {
@@ -128,6 +159,8 @@ async function liveState(event: JuktiEvent): Promise<Pick<RsvpState, "seats" | "
     viewer: {
       name: member?.data?.name || previous?.data?.full_name || metadata.full_name || metadata.name || "",
       email: typeof claims.email === "string" ? claims.email : "",
+      userId: claims.sub,
+      profileGaps,
       studentId: member?.data?.iub_id || previous?.data?.student_id || "",
       department: member?.data?.department || "",
       phone: member?.data?.contact_number || "",

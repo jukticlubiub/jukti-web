@@ -132,3 +132,12 @@ export type EventPhoto = {
 };
 
 export type EventStatus = "upcoming" | "ongoing" | "past";
+
+/**
+ * A missing profile detail the RSVP form already collects as one of the event's fields (the
+ * event's phone / department question): that answer fills the profile, so it isn't asked twice.
+ */
+export const profileGapField = { contact_number: "phone", department: "department" } as const satisfies Partial<Record<string, RsvpStandardField>>;
+
+/** The form field a missing profile detail is typed into (department is renamed: the event may ask it too). */
+export const profileGapInput = (gap: string) => (gap === "department" ? "m_department" : gap);

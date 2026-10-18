@@ -6,10 +6,21 @@ import { cn } from "@/lib/cn";
 import { signOut } from "@/lib/auth/actions";
 import { rsvpAction, type RsvpFormState } from "@/lib/events/actions";
 import type { RsvpRegistration, RsvpState, RsvpViewer } from "@/lib/events/rsvp";
-import { type EventAudience, type EventFee, type RsvpFields, type RsvpQuestion, rsvpFieldLabels, type RsvpStandardField, rsvpStandardFields } from "@/lib/events/types";
+import {
+  type EventAudience,
+  type EventFee,
+  profileGapField,
+  profileGapInput,
+  type RsvpFields,
+  type RsvpQuestion,
+  rsvpFieldLabels,
+  type RsvpStandardField,
+  rsvpStandardFields,
+} from "@/lib/events/types";
 import { bkashNumber as clubBkash } from "@/lib/members/options";
 import { formatDay, formatTime } from "@/lib/events/time";
 import { AddToCalendar } from "./AddToCalendar";
+import { AvatarField } from "@/components/members/AvatarField";
 import { GoogleSignIn } from "@/components/ui/GoogleSignIn";
 import { CheckIcon, ClockIcon } from "@/components/ui/icons";
 import { SeatsMeter } from "./SeatsMeter";
@@ -225,12 +236,20 @@ export function RsvpPanel({
                       <StandardField
                         key={f}
                         field={f}
-                        required={event.fields[f] === "required"}
+                        required={event.fields[f] === "required" || profileAsks(state.viewer?.profileGaps, f)}
                         viewer={state.viewer ?? undefined}
                         value={result.values?.[f === "student_id" ? "studentId" : f]}
                         error={result.fieldErrors?.[f === "student_id" ? "studentId" : f]}
                       />
                     ))}
+                  {state.mode === "live" && (state.viewer.profileGaps?.length ?? 0) > 0 && (
+                    <CompleteMembership
+                      viewer={state.viewer}
+                      fields={event.fields}
+                      values={result.values}
+                      errors={result.fieldErrors}
+                    />
+                  )}
                   {event.questions.map((q) => (
                     <QuestionField key={q.id} question={q} value={result.values?.[q.id]} error={result.fieldErrors?.[q.id]} />
                   ))}
@@ -437,6 +456,78 @@ function StandardField({
     return <Field label={label} name="phone" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" defaultValue={defaultValue} error={error} />;
   }
   return <Field label={label} name="department" defaultValue={defaultValue} error={error} />;
+}
+
+/** Whether the event's own field also fills a missing profile detail (so it's required). */
+function profileAsks(gaps: RsvpViewer["profileGaps"], field: RsvpStandardField) {
+  return (gaps ?? []).some((gap) => gap in profileGapField && profileGapField[gap as keyof typeof profileGapField] === field);
+}
+
+/**
+ * A member whose profile is missing details (usually imported from the registration app, here
+ * for the first time) adds them with the RSVP: one submit finishes signing up and RSVPs.
+ * Details the event already asks for (phone, department) aren't repeated here.
+ */
+function CompleteMembership({
+  viewer,
+  fields,
+  values,
+  errors,
+}: {
+  viewer: RsvpViewer;
+  fields: RsvpFields;
+  values?: Record<string, string>;
+  errors?: Record<string, string>;
+}) {
+  const gaps = (viewer.profileGaps ?? []).filter((gap) => {
+    const asked = gap in profileGapField ? profileGapField[gap as keyof typeof profileGapField] : null;
+    return !(asked && fields[asked]);
+  });
+  if (gaps.length === 0) return null;
+  const value = (gap: string) => values?.[profileGapInput(gap)];
+  const error = (gap: string) => errors?.[profileGapInput(gap)];
+
+  return (
+    <fieldset className="grid gap-4 rounded-[14px] border border-flare/30 bg-lava/[0.07] p-4 sm:p-5">
+      <legend className="sr-only">Complete your JUKTI membership</legend>
+      <div>
+        <p className="font-heading text-[1.02rem] text-fg">Complete your JUKTI membership</p>
+        <p className="mt-1.5 text-[0.9rem] leading-relaxed text-body">
+          You’re already a JUKTI member. Add the details below to finish your profile. They’re saved with your RSVP.
+        </p>
+      </div>
+      {gaps.includes("photo_url") && (
+        <AvatarField userId={viewer.userId ?? ""} name={viewer.name} defaultUrl={value("photo_url") || null} live error={error("photo_url")} />
+      )}
+      {gaps.includes("secondary_email") && (
+        <Field
+          label="Personal email (not your IUB one)"
+          name="secondary_email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@gmail.com"
+          defaultValue={value("secondary_email")}
+          error={error("secondary_email")}
+        />
+      )}
+      {gaps.includes("contact_number") && (
+        <Field
+          label="Mobile number"
+          name="contact_number"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="01XXXXXXXXX"
+          defaultValue={value("contact_number") ?? viewer.phone}
+          error={error("contact_number")}
+        />
+      )}
+      {gaps.includes("department") && <Field label="Department" name="m_department" defaultValue={value("department")} error={error("department")} />}
+      {gaps.includes("residence_area") && (
+        <Field label="Where you live (area)" name="residence_area" defaultValue={value("residence_area")} error={error("residence_area")} />
+      )}
+    </fieldset>
+  );
 }
 
 /** A custom question: short text, long text, single choice, or multiple choice. */
