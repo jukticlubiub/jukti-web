@@ -19,6 +19,7 @@ type EventRow = {
   ends_at: string;
   venue: string;
   cover_url: string | null;
+  cover_square_url: string | null;
   cover_alt: string;
   agenda: unknown;
   recap: string | null;
@@ -37,7 +38,7 @@ type EventRow = {
 type CountRow = { event_id: string; registered: number; waitlisted: number };
 
 const EVENT_COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, event_photos(count)";
 
 function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
   const category = (eventCategories as readonly string[]).includes(row.category)
@@ -53,7 +54,7 @@ function toEvent(row: EventRow, counts?: CountRow): JuktiEvent {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     venue: row.venue,
-    cover: row.cover_url ? { url: row.cover_url, alt: row.cover_alt } : null,
+    cover: row.cover_url || row.cover_square_url ? { url: (row.cover_url || row.cover_square_url)!, alt: row.cover_alt, squareUrl: row.cover_square_url } : null,
     agenda: Array.isArray(row.agenda) ? row.agenda : [],
     recap: row.recap,
     rsvp: {

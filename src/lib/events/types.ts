@@ -89,7 +89,13 @@ export type JuktiEvent = {
   endsAt: string;
   venue: string;
   /** The event poster. Without one, the page draws cover art in the site's style. */
-  cover: { url: string; alt: string } | null;
+  cover: {
+    /** The wide (16:9) cover, or the square one when that's the only upload. */
+    url: string;
+    alt: string;
+    /** A square (1:1) cover for square frames on large screens. */
+    squareUrl: string | null;
+  } | null;
   agenda: AgendaItem[];
   /** A short write-up shown once the event is over. */
   recap: string | null;

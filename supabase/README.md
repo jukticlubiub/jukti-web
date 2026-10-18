@@ -40,6 +40,7 @@ the one-time setup, and how the panel's roles work.
      standard fields to collect (`rsvp_fields`) and custom questions (`rsvp_questions`),
      plus an `answers` column on registrations; `register_for_event` enforces the audience
      and required fields/questions
+   - `…_event_square_cover.sql`: a second, square (1:1) event cover used on large screens
    - `…_rsvp_facebook.sql`: a Facebook profile link RSVP field (prefilled from members' profiles, and saved back to the profile when a member gives a new one)
 2. **Load the starting content**: paste `seed/faculty.sql`, then `seed/content.sql`, into
    the SQL editor. For members, see **Members** below (the import and executive codes). (`content.sql` copies the team, alumni, story chapters, developers,

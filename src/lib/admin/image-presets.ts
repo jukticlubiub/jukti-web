@@ -40,8 +40,12 @@ export const imagePresets = {
     shapes: [{ label: "Developer card (2:3)", aspect: 2 / 3, width: 1000 }],
   },
   eventCover: {
-    usedFor: "event cards (16:10); the event page shows a taller crop of the centre on large screens",
-    shapes: [{ label: "Event card (16:10)", aspect: 16 / 10, width: 1800 }, { label: "Poster (4:5)", aspect: 4 / 5, width: 1200 }, original],
+    usedFor: "event cards and phones (16:9); on large screens the square cover is used if there is one",
+    shapes: [{ label: "Wide (16:9)", aspect: 16 / 9, width: 1920 }, { label: "Event card (16:10)", aspect: 16 / 10, width: 1800 }, original],
+  },
+  eventCoverSquare: {
+    usedFor: "the featured event and the event page on large screens (1:1)",
+    shapes: [{ label: "Square (1:1)", aspect: 1, width: 1400 }],
   },
   logCover: {
     usedFor: "log cards and the featured log (16:10)",

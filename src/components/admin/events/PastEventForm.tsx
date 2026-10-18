@@ -40,7 +40,11 @@ export function PastEventForm({ event, live }: { event?: AdminEvent; live: boole
           <TextField label="Venue" name="venue" state={state} defaultValue={event?.venue} placeholder="e.g. Auditorium, IUB" />
           <TextArea label="Summary (for cards)" name="summary" rows={2} state={state} defaultValue={event?.summary} />
           <TextArea label="Description (optional)" name="description" rows={4} state={state} defaultValue={event?.description} hint={<span className="text-[0.78rem] text-muted">A blank line starts a new paragraph</span>} />
-          <ImageField label="Cover image (optional: without one the site draws cover art)" name="coverUrl" folder="events" preset="eventCover" defaultUrl={event?.cover?.url} live={live} />
+          <div className="grid gap-5 md:grid-cols-2">
+            <ImageField label="Wide cover, 16:9 (cards and phones)" name="coverUrl" folder="events" preset="eventCover" defaultUrl={event?.coverWideUrl} live={live} />
+            <ImageField label="Square cover, 1:1 (large screens, optional)" name="coverSquareUrl" folder="events" preset="eventCoverSquare" defaultUrl={event?.cover?.squareUrl} live={live} />
+          </div>
+          <p className="-mt-2 text-[0.82rem] text-muted">Optional: without a cover the site draws cover art. With both, each screen gets the one that fits its frame; with one, it’s fitted whole everywhere.</p>
           <TextField label="Cover description (for screen readers)" name="coverAlt" state={state} defaultValue={event?.cover?.alt} />
           <TextArea
             label="Recap: how it went"

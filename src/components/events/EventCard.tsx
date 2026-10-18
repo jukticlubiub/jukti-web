@@ -19,9 +19,10 @@ export function EventCard({ event, className }: { event: EventCardData; classNam
   return (
     <GlassCard className={cn("group h-full overflow-hidden", className)}>
       <Link href={eventPath(event.slug)} className="flex h-full flex-col rounded-[inherit]">
-        <div className="relative aspect-[16/10] overflow-hidden rounded-t-[inherit]">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-t-[inherit]">
           <EventCover
             event={event}
+            contain
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
             className="grayscale-[0.9] transition-[filter,scale] duration-700 ease-reveal group-hover:scale-[1.04] group-hover:grayscale-0"
           />

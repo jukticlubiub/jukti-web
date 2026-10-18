@@ -26,6 +26,7 @@ const eventSchema = z
     endsAt: z.string({ error: "Set when it ends." }),
     venue: z.string().max(200),
     coverUrl: z.string().nullable(),
+    coverSquareUrl: z.string().nullable(),
     coverAlt: z.string().max(200),
     agenda: z.array(z.object({ time: z.string(), title: z.string(), detail: z.string().optional() })),
     rsvpEnabled: z.boolean(),
@@ -103,6 +104,7 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     endsAt: fromDhakaInput(str(fd, "endsAt")) ?? undefined,
     venue: str(fd, "venue"),
     coverUrl: optional(fd, "coverUrl"),
+    coverSquareUrl: optional(fd, "coverSquareUrl"),
     coverAlt: str(fd, "coverAlt"),
     agenda: parseAgenda(str(fd, "agenda")),
     rsvpEnabled: bool(fd, "rsvpEnabled"),
@@ -116,9 +118,11 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
   const parsed = eventSchema.safeParse(values);
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const e = parsed.data;
-  if (e.coverUrl && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
+  if ((e.coverUrl || e.coverSquareUrl) && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
   const cover = await keepImageOr(g.db, e.coverUrl, "events");
   if ("error" in cover) return failed(cover.error, { coverUrl: cover.error });
+  const coverSquare = await keepImageOr(g.db, e.coverSquareUrl, "events");
+  if ("error" in coverSquare) return failed(coverSquare.error, { coverSquareUrl: coverSquare.error });
 
   const row = {
     title: e.title,
@@ -130,6 +134,7 @@ export async function saveEvent(previous: ActionState, fd: FormData): Promise<Ac
     ends_at: e.endsAt,
     venue: e.venue,
     cover_url: cover.url,
+    cover_square_url: coverSquare.url,
     cover_alt: e.coverAlt,
     agenda: e.agenda,
     rsvp_enabled: e.rsvpEnabled,
@@ -167,6 +172,7 @@ const pastSchema = z
     endsAt: z.string({ error: "Set when it ended." }),
     venue: z.string().max(200),
     coverUrl: z.string().nullable(),
+    coverSquareUrl: z.string().nullable(),
     coverAlt: z.string().max(200),
     recap: z.string().max(10000, "Keep the recap under 10,000 characters."),
   })
@@ -191,14 +197,17 @@ export async function savePastEvent(previous: ActionState, fd: FormData): Promis
     endsAt: fromDhakaInput(str(fd, "endsAt")) ?? undefined,
     venue: str(fd, "venue"),
     coverUrl: optional(fd, "coverUrl"),
+    coverSquareUrl: optional(fd, "coverSquareUrl"),
     coverAlt: str(fd, "coverAlt"),
     recap: str(fd, "recap"),
   });
   if (!parsed.success) return failed("Check the highlighted fields.", fieldErrors(parsed.error));
   const e = parsed.data;
-  if (e.coverUrl && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
+  if ((e.coverUrl || e.coverSquareUrl) && !e.coverAlt) return failed("Describe the cover image for people who can’t see it.", { coverAlt: "Describe the image." });
   const cover = await keepImageOr(g.db, e.coverUrl, "events");
   if ("error" in cover) return failed(cover.error, { coverUrl: cover.error });
+  const coverSquare = await keepImageOr(g.db, e.coverSquareUrl, "events");
+  if ("error" in coverSquare) return failed(coverSquare.error, { coverSquareUrl: coverSquare.error });
 
   const row = {
     title: e.title,
@@ -210,6 +219,7 @@ export async function savePastEvent(previous: ActionState, fd: FormData): Promis
     ends_at: e.endsAt,
     venue: e.venue,
     cover_url: cover.url,
+    cover_square_url: coverSquare.url,
     cover_alt: e.coverAlt,
     recap: e.recap || null,
     rsvp_enabled: false,

@@ -126,7 +126,7 @@ async function EventDetail({ params, searchParams }: Pick<PageProps<"/events/[sl
             {event.cover ? (
               // A real poster: shown whole, at its own shape (capped so a tall one still fits the screen).
               <div className="relative overflow-hidden rounded-[14px] bg-black/30">
-                <EventCover event={event} natural priority sizes="(max-width: 1024px) 100vw, 40vw" className="max-h-[80svh] object-contain" />
+                <EventCover event={event} natural squareOnLarge priority sizes="(max-width: 1024px) 100vw, 40vw" className="max-h-[80svh] object-contain" />
               </div>
             ) : (
               <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] max-lg:aspect-[16/11]">

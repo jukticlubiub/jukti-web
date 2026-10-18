@@ -31,9 +31,9 @@ export function FeaturedEvent({ event, status }: { event: JuktiEvent; status: Ev
           href={href}
           tabIndex={-1}
           aria-hidden
-          className="relative block aspect-[16/10] overflow-hidden rounded-[14px] lg:aspect-auto lg:min-h-[34rem]"
+          className="relative block aspect-[16/9] overflow-hidden rounded-[14px] lg:aspect-auto lg:min-h-[34rem]"
         >
-          <EventCover event={event} animated priority sizes="(max-width: 1024px) 100vw, 45vw" />
+          <EventCover event={event} animated priority contain squareOnLarge sizes="(max-width: 1024px) 100vw, 45vw" />
         </Link>
 
         <div className="flex flex-col gap-6 px-3 pt-6 pb-4 sm:px-5 lg:justify-center lg:gap-7 lg:py-10 lg:pr-[clamp(1.5rem,3vw,3.5rem)] lg:pl-[clamp(1.75rem,3.2vw,3.75rem)]">

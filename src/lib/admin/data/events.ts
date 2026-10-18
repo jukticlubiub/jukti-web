@@ -4,7 +4,11 @@ import { eventCategories, type EventCategory, type EventPhoto, type JuktiEvent, 
 import type { Admin } from "../access";
 import { adminDb } from "../guard";
 
-export type AdminEvent = JuktiEvent & { published: boolean };
+export type AdminEvent = JuktiEvent & {
+  published: boolean;
+  /** The wide cover as stored (cover.url falls back to the square one for display). */
+  coverWideUrl: string | null;
+};
 
 export type Registration = {
   id: string;
@@ -36,6 +40,7 @@ type Row = {
   ends_at: string;
   venue: string;
   cover_url: string | null;
+  cover_square_url: string | null;
   cover_alt: string;
   agenda: unknown;
   recap: string | null;
@@ -53,7 +58,7 @@ type Row = {
 };
 
 const COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, event_photos(count)";
 
 function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): AdminEvent {
   return {
@@ -66,19 +71,20 @@ function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): A
     startsAt: r.starts_at,
     endsAt: r.ends_at,
     venue: r.venue,
-    cover: r.cover_url ? { url: r.cover_url, alt: r.cover_alt } : null,
+    cover: r.cover_url || r.cover_square_url ? { url: (r.cover_url || r.cover_square_url)!, alt: r.cover_alt, squareUrl: r.cover_square_url } : null,
     agenda: Array.isArray(r.agenda) ? r.agenda : [],
     recap: r.recap,
     rsvp: { enabled: r.rsvp_enabled, deadline: r.rsvp_deadline, capacity: r.capacity, registered: counts?.registered ?? 0, waitlisted: counts?.waitlisted ?? 0, audience: r.audience === "open" ? "open" : "iub", fields: parseRsvpFields(r.rsvp_fields), questions: parseRsvpQuestions(r.rsvp_questions) },
     photoCount: r.event_photos[0]?.count ?? 0,
     fee: r.fee_amount && r.fee_amount > 0 ? { amount: r.fee_amount, bkashNumber: r.fee_bkash_number, note: r.fee_note } : null,
     published: r.published,
+    coverWideUrl: r.cover_url,
   };
 }
 
 /** Every event, drafts included, newest first. */
 export async function listEvents(admin: Admin): Promise<AdminEvent[]> {
-  if (admin.mode === "preview") return sampleEvents.map((e) => ({ ...e, published: true }));
+  if (admin.mode === "preview") return sampleEvents.map((e) => ({ ...e, published: true, coverWideUrl: e.cover?.url ?? null }));
   const db = await adminDb();
   const [events, counts] = await Promise.all([db.from("events").select(COLUMNS).order("starts_at", { ascending: false }), db.rpc("event_rsvp_counts")]);
   if (events.error) throw new Error(`Couldn't load events: ${events.error.message}`);
@@ -89,7 +95,7 @@ export async function listEvents(admin: Admin): Promise<AdminEvent[]> {
 export async function getAdminEvent(admin: Admin, id: string): Promise<AdminEvent | null> {
   if (admin.mode === "preview") {
     const e = sampleEvents.find((x) => x.id === id);
-    return e ? { ...e, published: true } : null;
+    return e ? { ...e, published: true, coverWideUrl: e.cover?.url ?? null } : null;
   }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const db = await adminDb();
