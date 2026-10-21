@@ -44,18 +44,37 @@ const outcomeLook: Record<ScanOutcome, { tone: string; badge: string }> = {
 };
 
 /**
- * Scanning at an event: pick where you are (the entry, or a station such as Lunch), then
- * scan member cards with the camera or type a member number.
+ * Scanning at an event: pick the day (for events that run several days) and where you are (the
+ * entry, or one of that day's stations such as Lunch), then scan tickets or member cards with the
+ * camera, or type the code.
  */
-export function CheckInScanner({ eventId, stations }: { eventId: string; stations: { id: string; name: string }[] }) {
+export function CheckInScanner({
+  eventId,
+  stations,
+  days = 1,
+  defaultDay = 1,
+  today = null,
+}: {
+  eventId: string;
+  stations: { id: string; name: string; day: number }[];
+  days?: number;
+  /** The day picked to start with (today's, during the event). */
+  defaultDay?: number;
+  /** Today's day of the event, or null before or after it. */
+  today?: number | null;
+}) {
+  const [picked, setDay] = useState(defaultDay);
+  // Within the event's days, should they change while this page is open.
+  const day = Math.min(picked, days);
+  const dayStations = stations.filter((s) => s.day === day);
   // "" is the entry.
   const [stationId, setStationId] = useState("");
-  const station = stations.find((s) => s.id === stationId);
-  // Read by the scan loop, so switching station doesn't restart the camera.
-  const stationRef = useRef(station);
+  const station = dayStations.find((s) => s.id === stationId);
+  // Read by the scan loop, so switching day or station doesn't restart the camera.
+  const whereRef = useRef({ station, day });
   useEffect(() => {
-    stationRef.current = station;
-  }, [station]);
+    whereRef.current = { station, day };
+  }, [station, day]);
   const [state, dispatch, pending] = useActionState(checkInMember, { status: "idle" } as CheckInState);
   const video = useRef<HTMLVideoElement>(null);
   const [scanning, setScanning] = useState(false);
@@ -67,14 +86,16 @@ export function CheckInScanner({ eventId, stations }: { eventId: string; station
       const fd = new FormData();
       fd.set("eventId", eventId);
       fd.set("code", code);
-      const current = stationRef.current;
+      const { station: current, day: currentDay } = whereRef.current;
+      fd.set("day", String(currentDay));
+      if (days > 1) fd.set("multiDay", "true");
       if (current) {
         fd.set("stationId", current.id);
-        fd.set("stationName", current.name);
+        fd.set("stationName", days > 1 ? `Day ${currentDay} ${current.name}` : current.name);
       }
       startTransition(() => dispatch(fd));
     },
-    [eventId, dispatch],
+    [eventId, days, dispatch],
   );
 
   useEffect(() => {
@@ -123,9 +144,31 @@ export function CheckInScanner({ eventId, stations }: { eventId: string; station
 
   return (
     <div className="grid gap-5">
+      {days > 1 && (
+        <div role="radiogroup" aria-label="Which day" className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-[0.85rem] text-muted">Day</span>
+          {Array.from({ length: days }, (_, i) => i + 1).map((d) => (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={day === d}
+              onClick={() => {
+                setDay(d);
+                setStationId("");
+                last.current = { code: "", at: 0 };
+              }}
+              className="h-10 min-w-10 rounded-full border border-glass-border px-4 text-[0.92rem] text-body tabular-nums transition-colors hover:border-flare/50 aria-checked:border-flare aria-checked:bg-white/10 aria-checked:text-fg"
+            >
+              {d}
+              {d === today && <span className="ml-1.5 text-[0.75rem] text-muted">today</span>}
+            </button>
+          ))}
+        </div>
+      )}
       <div role="radiogroup" aria-label="Where you’re scanning" className="flex flex-wrap items-center gap-2">
         <span className="mr-1 text-[0.85rem] text-muted">Scanning at</span>
-        {[{ id: "", name: "Entry" }, ...stations].map((s) => (
+        {[{ id: "", name: days > 1 ? `Day ${day} check-in` : "Entry" }, ...dayStations].map((s) => (
           <button
             key={s.id || "entry"}
             type="button"

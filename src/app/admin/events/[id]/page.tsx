@@ -14,7 +14,7 @@ import { rsvpClosesAt } from "@/lib/events/time";
 import { PageHeader, PageSkeleton, Panel, Pill, formatWhen } from "@/components/admin/ui";
 import { requireArea } from "@/lib/admin/access";
 import { requestTime } from "@/lib/events/now";
-import { getAdminEvent, getEventPhotosForAdmin, getRegistrations, getStationScans, getStations } from "@/lib/admin/data/events";
+import { getAdminEvent, getDayCheckIns, getEventPhotosForAdmin, getRegistrations, getStationScans, getStations } from "@/lib/admin/data/events";
 import type { Admin } from "@/lib/admin/access";
 import { canAccess, canOpenEvents } from "@/lib/admin/roles";
 import { cn } from "@/lib/cn";
@@ -102,14 +102,14 @@ async function EventAdmin({ params, searchParams }: PageProps<"/admin/events/[id
         <Panel>
           {event.rsvp.enabled && <RsvpGate event={event} now={await requestTime()} />}
           {event.rsvp.enabled || event.rsvp.registered > 0 ? (
-            <RsvpTable registrations={await getRegistrations(admin, event.id)} questions={event.rsvp.questions} capacity={event.rsvp.capacity} csvHref={`/admin/events/${event.id}/rsvps.csv`} />
+            <RsvpTable registrations={await getRegistrations(admin, event.id)} questions={event.rsvp.questions} capacity={event.rsvp.capacity} checkInDays={event.checkInDays} csvHref={`/admin/events/${event.id}/rsvps.csv`} />
           ) : (
             <p className="text-[0.92rem] text-muted">RSVPs are off for this event. Turn them on in Details.</p>
           )}
           {!live && <p className="mt-4 text-[0.85rem] text-muted">Preview mode: the people who RSVP’d appear here once Supabase is connected.</p>}
         </Panel>
       )}
-      {tab === "checkin" && <CheckIn admin={admin} eventId={event.id} live={live} />}
+      {tab === "checkin" && <CheckIn admin={admin} eventId={event.id} days={event.checkInDays} startsAt={event.startsAt} live={live} />}
       {tab === "recap" && (
         <div className="grid gap-6">
           {Date.parse(event.endsAt) > (await requestTime()) && (
@@ -164,21 +164,48 @@ function RsvpGate({ event, now }: { event: NonNullable<Awaited<ReturnType<typeof
   );
 }
 
-/** Event day: scan at the entry and at stations (Lunch…), and watch who's in and who's been served. */
-async function CheckIn({ admin, eventId, live }: { admin: Admin; eventId: string; live: boolean }) {
-  const [registrations, stations] = await Promise.all([getRegistrations(admin, eventId), getStations(admin, eventId)]);
+/** The calendar date in Dhaka, as YYYY-MM-DD. */
+const dhakaDate = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(ms));
+
+/**
+ * Which day of the event today is (Day 1 on its start date, in Dhaka): `day` to open on, kept
+ * within its days, and `today` only when today really is one of them (not before or after).
+ */
+function eventDayToday(startsAt: string, days: number, now: number) {
+  const n = Math.round((Date.parse(dhakaDate(now)) - Date.parse(dhakaDate(Date.parse(startsAt)))) / 86_400_000) + 1;
+  return { day: Math.min(days, Math.max(1, n)), today: n >= 1 && n <= days ? n : null };
+}
+
+/** Event day: scan at each day's entry and stations (Lunch…), and watch who's in and who's been served. */
+async function CheckIn({ admin, eventId, days, startsAt, live }: { admin: Admin; eventId: string; days: number; startsAt: string; live: boolean }) {
+  const [registrations, stations, dayCheckIns, now] = await Promise.all([
+    getRegistrations(admin, eventId),
+    getStations(admin, eventId),
+    getDayCheckIns(admin, eventId),
+    requestTime(),
+  ]);
   const scans = await getStationScans(admin, stations);
+  const { day, today } = eventDayToday(startsAt, days, now);
   return (
     <div className="grid gap-6">
       <Panel
         title="Scan"
-        description="Pick where you are, then scan the QR code on a member’s card (Account → Member card) or type their member number. Green: let them in / serve them. Red: they’ve already had it."
+        description={`Pick ${days > 1 ? "the day and " : ""}where you are, then scan the QR code on a ticket or member card, or type the code. Green: let them in / serve them. Red: they’ve already had it.`}
       >
-        <CheckInScanner eventId={eventId} stations={stations} />
+        <CheckInScanner eventId={eventId} stations={stations} days={days} defaultDay={day} today={today} />
         {!live && <p className="mt-4 text-[0.85rem] text-muted">Preview mode: scans are saved only once Supabase is connected.</p>}
       </Panel>
       <Panel title="Who’s here">
-        <Attendance eventId={eventId} registrations={registrations} stations={stations} scans={Object.fromEntries(scans)} />
+        <Attendance
+          eventId={eventId}
+          registrations={registrations}
+          stations={stations}
+          scans={Object.fromEntries(scans)}
+          days={days}
+          defaultDay={day}
+          today={today}
+          dayCheckIns={Object.fromEntries(dayCheckIns)}
+        />
       </Panel>
     </div>
   );

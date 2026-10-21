@@ -8,6 +8,8 @@ export type AdminEvent = JuktiEvent & {
   published: boolean;
   /** The wide cover as stored (cover.url falls back to the square one for display). */
   coverWideUrl: string | null;
+  /** How many days check-in runs for (each day has its own entry check-in and stations). */
+  checkInDays: number;
 };
 
 export type Registration = {
@@ -55,11 +57,12 @@ type Row = {
   fee_bkash_number: string | null;
   fee_note: string | null;
   published: boolean;
+  check_in_days: number;
   event_photos: { count: number }[];
 };
 
 const COLUMNS =
-  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, rsvp_closed, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, event_photos(count)";
+  "id, slug, title, summary, description, category, starts_at, ends_at, venue, cover_url, cover_square_url, cover_alt, agenda, recap, rsvp_enabled, rsvp_deadline, rsvp_closed, capacity, audience, rsvp_fields, rsvp_questions, fee_amount, fee_bkash_number, fee_note, published, check_in_days, event_photos(count)";
 
 function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): AdminEvent {
   return {
@@ -80,12 +83,13 @@ function toEvent(r: Row, counts?: { registered: number; waitlisted: number }): A
     fee: r.fee_amount && r.fee_amount > 0 ? { amount: r.fee_amount, bkashNumber: r.fee_bkash_number, note: r.fee_note } : null,
     published: r.published,
     coverWideUrl: r.cover_url,
+    checkInDays: r.check_in_days ?? 1,
   };
 }
 
 /** Every event, drafts included, newest first. */
 export async function listEvents(admin: Admin): Promise<AdminEvent[]> {
-  if (admin.mode === "preview") return sampleEvents.map((e) => ({ ...e, published: true, coverWideUrl: e.cover?.url ?? null }));
+  if (admin.mode === "preview") return sampleEvents.map((e) => ({ ...e, published: true, coverWideUrl: e.cover?.url ?? null, checkInDays: 1 }));
   const db = await adminDb();
   const [events, counts] = await Promise.all([db.from("events").select(COLUMNS).order("starts_at", { ascending: false }), db.rpc("event_rsvp_counts")]);
   if (events.error) throw new Error(`Couldn't load events: ${events.error.message}`);
@@ -96,7 +100,7 @@ export async function listEvents(admin: Admin): Promise<AdminEvent[]> {
 export async function getAdminEvent(admin: Admin, id: string): Promise<AdminEvent | null> {
   if (admin.mode === "preview") {
     const e = sampleEvents.find((x) => x.id === id);
-    return e ? { ...e, published: true, coverWideUrl: e.cover?.url ?? null } : null;
+    return e ? { ...e, published: true, coverWideUrl: e.cover?.url ?? null, checkInDays: 1 } : null;
   }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const db = await adminDb();
@@ -170,15 +174,31 @@ export async function getRegistrations(admin: Admin, eventId: string): Promise<R
   }));
 }
 
-/** Scan stations at an event besides the entry, e.g. "Lunch". */
-export type Station = { id: string; name: string };
+/** Scan stations at an event besides the entry, e.g. "Lunch", each on one of the event's days. */
+export type Station = { id: string; name: string; day: number };
 
 export async function getStations(admin: Admin, eventId: string): Promise<Station[]> {
-  if (admin.mode === "preview") return [{ id: "preview-lunch", name: "Lunch" }];
+  if (admin.mode === "preview") return [{ id: "preview-lunch", name: "Lunch", day: 1 }];
   const db = await adminDb();
-  const { data, error } = await db.from("event_stations").select("id, name").eq("event_id", eventId).order("position").order("created_at");
+  const { data, error } = await db.from("event_stations").select("id, name, day").eq("event_id", eventId).order("day").order("position").order("created_at");
   if (error) throw new Error(`Couldn't load stations: ${error.message}`);
   return data as Station[];
+}
+
+/** Who checked in on which day: registration id → day → when. */
+export async function getDayCheckIns(admin: Admin, eventId: string): Promise<Map<string, Record<number, string>>> {
+  const days = new Map<string, Record<number, string>>();
+  if (admin.mode === "preview") return days;
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("event_day_checkins")
+    .select("registration_id, day, checked_in_at, event_registrations!inner(event_id)")
+    .eq("event_registrations.event_id", eventId);
+  if (error) throw new Error(`Couldn't load check-ins: ${error.message}`);
+  for (const c of data as { registration_id: string; day: number; checked_in_at: string }[]) {
+    days.set(c.registration_id, { ...days.get(c.registration_id), [c.day]: c.checked_in_at });
+  }
+  return days;
 }
 
 /** Who was scanned at which station: registration id → station id → when. */

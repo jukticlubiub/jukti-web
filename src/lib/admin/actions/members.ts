@@ -82,6 +82,9 @@ export async function checkInMember(previous: CheckInState, fd: FormData): Promi
   const eventId = str(fd, "eventId");
   const stationId = str(fd, "stationId") || null;
   const stationName = str(fd, "stationName") || "this station";
+  // The entry's day (a station knows its own). "Day 2" in messages when the event runs several days.
+  const day = Math.min(14, Math.max(1, Number(str(fd, "day") || "1") || 1));
+  const dayLabel = str(fd, "multiDay") === "true" ? ` for Day ${day}` : "";
   const code = str(fd, "code");
   if (!UUID.test(eventId) || (stationId && !UUID.test(stationId)) || !code) return { status: "error", message: "Scan a member card or type a member number.", seq };
 
@@ -101,19 +104,19 @@ export async function checkInMember(previous: CheckInState, fd: FormData): Promi
   }
 
   const { data, error } = ticket
-    ? await g.db.rpc("scan_ticket", { p_ticket_code: ticket, p_event_id: eventId, p_station_id: stationId })
-    : await g.db.rpc("scan_at_event", { p_member_id: memberId, p_event_id: eventId, p_station_id: stationId });
+    ? await g.db.rpc("scan_ticket", { p_ticket_code: ticket, p_event_id: eventId, p_station_id: stationId, p_day: day })
+    : await g.db.rpc("scan_at_event", { p_member_id: memberId, p_event_id: eventId, p_station_id: stationId, p_day: day });
   if (error) return { status: "error", message: explainDbError(error.message), seq };
   const row = (data as { outcome: ScanOutcome; name: string | null; member_no: string | null; photo_url: string | null; member_status: string | null; at: string | null; also_checked_in: boolean }[])[0];
   if (!row || row.outcome === "unknown_member") return { status: "error", message: "No member found. Check the card or the number.", seq };
   if (row.outcome === "unknown_ticket") return { status: "error", message: "No such ticket. Check the code.", seq };
-  if (row.outcome === "wrong_station") return { status: "error", message: "That station isn’t part of this event. Reload the page.", seq };
+  if (row.outcome === "wrong_station") return { status: "error", message: "That station or day isn’t part of this event. Reload the page.", seq };
 
   const name = row.name ?? "This member";
   const time = row.at ? dhakaTime.format(new Date(row.at)) : "";
   const messages: Record<ScanOutcome, string> = {
-    checked_in: `${name} checked in.`,
-    already_checked_in: `${name} already checked in at ${time}.`,
+    checked_in: `${name} checked in${dayLabel}.`,
+    already_checked_in: `${name} already checked in${dayLabel} at ${time}.`,
     served: `${name}: ${stationName} done.`,
     already_served: `${name} already had ${stationName} at ${time}.`,
     no_rsvp: `${name} hasn’t RSVPed to this event.`,
@@ -146,8 +149,10 @@ export async function addStation(previous: ActionState, fd: FormData): Promise<A
   const name = str(fd, "name");
   if (name.length < 1 || name.length > 40) return failed("Name the station, e.g. Lunch.", { name: "1–40 characters." });
   const eventId = str(fd, "eventId");
-  const { count } = await g.db.from("event_stations").select("id", { count: "exact", head: true }).eq("event_id", eventId);
-  const { error } = await g.db.from("event_stations").insert({ event_id: eventId, name, position: count ?? 0 });
+  const day = Number(str(fd, "day") || "1");
+  if (!Number.isInteger(day) || day < 1 || day > 14) return failed("Choose a day for the station.");
+  const { count } = await g.db.from("event_stations").select("id", { count: "exact", head: true }).eq("event_id", eventId).eq("day", day);
+  const { error } = await g.db.from("event_stations").insert({ event_id: eventId, name, day, position: count ?? 0 });
   if (error) return failed(explainDbError(error.message));
   refresh();
   return ok(previous, `Added ${name}.`);

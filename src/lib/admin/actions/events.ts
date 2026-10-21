@@ -314,16 +314,31 @@ export async function setPaid(previous: ActionState, fd: FormData): Promise<Acti
   return ok(previous, paid ? "Marked paid. We’ve emailed them." : "Marked unpaid.");
 }
 
+/** Check someone in by hand for one day (Day 1 unless `day` says otherwise), or undo it. */
 export async function toggleCheckIn(previous: ActionState, fd: FormData): Promise<ActionState> {
   const g = await guard("events");
   if (!g.ok) return g.state;
   const checkedIn = str(fd, "checkedIn") === "true";
-  const { error } = await g.db
-    .from("event_registrations")
-    .update({ checked_in_at: checkedIn ? null : new Date().toISOString() })
-    .eq("id", str(fd, "id"));
+  const day = Number(str(fd, "day") || "1");
+  const { error } = await g.db.rpc("admin_set_day_checkin", { p_registration_id: str(fd, "id"), p_day: day, p_checked_in: !checkedIn });
   if (error) return failed(explainDbError(error.message));
+  refresh();
   return ok(previous, checkedIn ? "Check-in undone." : "Checked in.");
+}
+
+/** How many days check-in runs for. Can't drop a day that already has stations or check-ins. */
+export async function setCheckInDays(previous: ActionState, fd: FormData): Promise<ActionState> {
+  const g = await guard("events");
+  if (!g.ok) return g.state;
+  const days = Number(str(fd, "days"));
+  if (!Number.isInteger(days) || days < 1 || days > 14) return failed("Choose 1 to 14 days.", { days: "1 to 14." });
+  const { error } = await g.db.rpc("set_event_check_in_days", { p_event_id: str(fd, "eventId"), p_days: days });
+  if (error) {
+    if (error.message.includes("days_in_use")) return failed("A day you’d remove still has stations or check-ins. Remove those first.");
+    return failed(explainDbError(error.message));
+  }
+  refresh();
+  return ok(previous, days === 1 ? "Check-in runs for 1 day." : `Check-in runs for ${days} days.`);
 }
 
 /* ---------- Documentation of past events (PR Editor) ---------- */

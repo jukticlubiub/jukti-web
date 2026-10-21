@@ -25,11 +25,14 @@ export function RsvpTable({
   registrations,
   questions,
   capacity,
+  checkInDays = 1,
   csvHref,
 }: {
   registrations: Registration[];
   questions: RsvpQuestion[];
   capacity: number | null;
+  /** Multi-day events check in per day on the Check-in tab, so there's no one-click check-in here. */
+  checkInDays?: number;
   csvHref: string;
 }) {
   const [query, setQuery] = useState("");
@@ -71,6 +74,9 @@ export function RsvpTable({
         )}
         <a href={csvHref} download className="ml-auto btn-pill btn-ghost h-9 px-4 text-[0.75rem]">Download CSV</a>
       </div>
+      {checkInDays > 1 && (
+        <p className="text-[0.85rem] text-muted">This event runs {checkInDays} days: check people in for each day on the Check-in tab. “Checked in” here means they came on at least one day.</p>
+      )}
       <div className="flex flex-wrap gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, ID, ticket or bKash" aria-label="Search RSVPs" className={cn(inputClass, "h-10 max-w-xs text-[0.9rem]")} />
         <select value={show} onChange={(e) => setShow(e.target.value as "active" | "all" | "payment")} aria-label="Show" className={cn(inputClass, "h-10 w-auto bg-[#141110] text-[0.9rem]")}>
@@ -137,7 +143,7 @@ export function RsvpTable({
                   <td className="px-4 py-2.5">
                     {r.status !== "cancelled" && (
                       <div className="flex flex-wrap gap-1.5">
-                        {r.status === "registered" && (
+                        {r.status === "registered" && checkInDays === 1 && (
                           <ActionButton action={toggleCheckIn} fields={{ id: r.id, checkedIn: String(Boolean(r.checkedInAt)) }} label={r.checkedInAt ? "Undo check-in" : "Check in"} tone={r.checkedInAt ? "ghost" : "primary"} />
                         )}
                         {r.status === "waitlisted" && (
