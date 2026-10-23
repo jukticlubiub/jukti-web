@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "lenis/dist/lenis.css";
+import { SiteAnalytics } from "@/components/analytics/SiteAnalytics";
 import { baseOpenGraph, defaultShareImage, siteTitle } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { bodyFont, displayFont } from "./fonts";
@@ -39,7 +41,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${displayFont.variable} ${bodyFont.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Suspense fallback={null}>
+          <SiteAnalytics />
+        </Suspense>
+      </body>
     </html>
   );
 }
