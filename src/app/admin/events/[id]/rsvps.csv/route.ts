@@ -26,7 +26,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/events/[i
     ...event.rsvp.questions.map((q) => ({ key: q.id, label: q.label })),
   ];
   const lines = [
-    ["Name", "Email", "Student ID", "Ticket", "Status", "Payment", "bKash sender", "bKash TxID", "Paid at", "Signed up", "Checked in", ...answerCols.map((c) => c.label), ...stations.map((s) => s.name)].join(","),
+    ["Name", "Email", "Student ID", "Ticket", "Status", "Payment", "bKash sender", "bKash TxID", "Paid at", "Signed up", "Checked in", ...answerCols.map((c) => c.label), ...stations.map((s) => (event.checkInDays > 1 ? `Day ${s.day} ${s.name}` : s.name))].map(csvCell).join(","),
     ...rows.map((r) =>
       [
         r.fullName,

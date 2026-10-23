@@ -163,6 +163,9 @@ export function Attendance({
           ))}
         </select>
         <p className="self-center text-[0.85rem] text-muted">{rows.length} shown · updates every 15 s</p>
+        <a href={`/admin/events/${eventId}/attendance.csv`} download className="ml-auto btn-pill btn-ghost h-10 px-4 text-[0.75rem]">
+          {multiDay ? "Download attendance (all days)" : "Download attendance"}
+        </a>
       </div>
 
       {rows.length === 0 ? (
